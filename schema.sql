@@ -94,6 +94,8 @@ alter table public.guests add column if not exists login_fails_total int not nul
 
 alter table public.settings add column if not exists whatsapp_url text not null default '';
 alter table public.settings add column if not exists admin_contact text not null default '';
+-- Grupo de WhatsApp de la fiesta (solo si aún no se ha puesto otro desde la gestión)
+update public.settings set whatsapp_url = 'https://chat.whatsapp.com/GUb7L7ib0mGElP6Ic2JWpd' where id = 1 and whatsapp_url = '';
 
 alter table public.settings   enable row level security;
 alter table public.collectors enable row level security;
