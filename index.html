@@ -80,6 +80,18 @@ button:disabled{opacity:.55;cursor:default}
 .seg button.on[data-s=si]{background:var(--grape);color:#16250a}
 .seg button.on[data-s=quiza]{background:var(--gold);color:#2a1d0b}
 .seg button.on[data-s=no]{background:#5d3a4b;color:var(--ink)}
+.seg button.on[data-p=bizum]{background:var(--grape);color:#16250a}
+.seg button.on[data-p=efectivo]{background:#5d3a4b;color:var(--ink)}
+.paybox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center}
+.paybox .who{font:400 clamp(26px,4vw,34px)/1.05 Anton,Impact,sans-serif}
+.paybox .num{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.warn{color:#ffb4bb;font-size:14px;margin:4px 0 0}
+.colgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:16px}
+.col{background:var(--panel2);border-radius:14px;padding:14px;display:grid;gap:8px}
+.col.off{opacity:.6}
+.col .meter{height:10px;background:var(--panel);border-radius:99px;overflow:hidden}
+.col .meter i{display:block;height:100%;background:var(--grape)}
+.col .nums{font-size:14px;color:var(--mute)}
 .msg{font-size:14px;color:var(--mute);min-height:1.4em;margin:0}
 .msg.err{color:#ff8a95}
 .msg.ok{color:var(--grape)}
@@ -204,41 +216,60 @@ async function rpc(fn,args={}){
 }
 
 /* ----- modo demostración: misma lógica que schema.sql, guardada en este navegador ----- */
-function demoDb(){let d=null;try{d=JSON.parse(store.get('nv_demo')||'null')}catch(e){}
+function demoDb(){let d=null;try{d=JSON.parse(store.get('nv_demo2')||'null')}catch(e){}
  if(!d){const u=()=>crypto.randomUUID();
-  d={settings:{event_name:'Nochevieja 2026',place:'Local La Terraza',addr:'Calle del Ejemplo 12, Madrid',start_time:'22:00',end_time:'06:00',pay_to:'Juan',pay_how:'Bizum al 600 000 000 con el concepto «Nochevieja + tu nombre»',notes:'El alcohol lo trae cada uno.',people_override:35,pin:null},
-   guests:[['Laura','600 111 111','si','Hielo',true],['Dani','600 222 222','si','Ginebra y tónica',false],['Marta','','quiza','',false],['Sergio','600 333 333','si','Cotillón',true]].map(([name,phone,status,brings,paid])=>({id:u(),token:u(),name,phone,status,brings,paid,created_at:new Date().toISOString()})),
+  const C=[['Laura','600 111 111'],['Dani','600 222 222'],['Sergio','600 333 333']].map(([name,phone],i)=>({id:u(),name,phone,active:true,created_at:i}));
+  d={settings:{event_name:'Nochevieja 2026',place:'Local La Terraza',addr:'Calle del Ejemplo 12, Madrid',start_time:'22:00',end_time:'06:00',pay_how:'Pon en el concepto «Nochevieja» y tu nombre.',notes:'El alcohol lo trae cada uno.',people_override:35,pin:null},
+   collectors:C,
+   guests:[['Laura','600 111 111','si','Hielo',true,'bizum',0],['Dani','600 222 222','si','Ginebra y tónica',false,'bizum',1],['Marta','','quiza','',false,'efectivo',2],['Sergio','600 333 333','si','Cotillón',true,'bizum',2],['Irene','600 444 444','si','',false,'bizum',0]].map(([name,phone,status,brings,paid,pay_method,c],i)=>({id:u(),token:u(),name,phone,status,brings,paid,pay_method,collector_id:C[c].id,created_at:i})),
    items:[['Alquiler del local','Local',1,500,false],['Vasos de cubata (pack de 100)','Bebida',2,6,false],['Hielo (bolsa de 2 kg)','Bebida',15,1.5,false],['Chuches surtidas (bolsa de 1 kg)','Picoteo',4,7,false],['Alquiler de altavoces','Música',1,90,false],['Refresco para mezclar (botella de 2 L)','Bebida',35,1,true]].map(([name,cat,q,p,opt],i)=>({id:u(),name,cat,q,p,who:'',done:false,opt,ord:i+1}))};
-  store.set('nv_demo',JSON.stringify(d))}
+  store.set('nv_demo2',JSON.stringify(d))}
  return d}
-function mock(fn,a){const d=demoDb(),S=d.settings,save=()=>store.set('nv_demo',JSON.stringify(d));
+function mock(fn,a){const d=demoDb(),S=d.settings,save=()=>store.set('nv_demo2',JSON.stringify(d));
  const money=()=>{let total=0,pending=0,extra=0;d.items.forEach(i=>{const s=i.q*i.p;if(i.opt)extra+=s;else{total+=s;if(!i.done)pending+=s}});
   const si=d.guests.filter(g=>g.status==='si').length,quiza=d.guests.filter(g=>g.status==='quiza').length,paid=d.guests.filter(g=>g.status==='si'&&g.paid).length;
   const n=Math.max(1,S.people_override??si),pp=Math.ceil(total/n*100)/100;
   return{total,pending,extra,people:n,by_confirmed:S.people_override==null,per_person:pp,extra_per_person:Math.ceil(extra/n*100)/100,si,quiza,paid,collected:Math.round(paid*pp*100)/100}};
- const ev=()=>({...S,pin:undefined,has_pin:!!S.pin});
+ const ev=()=>({event_name:S.event_name,place:S.place,addr:S.addr,start_time:S.start_time,end_time:S.end_time,pay_how:S.pay_how,notes:S.notes,people_override:S.people_override,has_pin:!!S.pin,collectors:d.collectors.filter(c=>c.active).length});
  const pinErr=p=>!S.pin?'Todavía no hay PIN de gestor':p!==S.pin?'PIN incorrecto':null;
- const st=v=>['si','quiza','no'].includes(v)?v:'si';
+ const st=v=>['si','quiza','no'].includes(v)?v:'si',pm=v=>v==='efectivo'?'efectivo':'bizum';
+ const pick=()=>{const act=d.collectors.filter(c=>c.active);if(!act.length)return null;
+  const cnt=c=>d.guests.filter(g=>g.collector_id===c.id&&g.status!=='no').length;const min=Math.min(...act.map(cnt));const opts=act.filter(c=>cnt(c)===min);return opts[Math.floor(Math.random()*opts.length)].id};
+ const assign=()=>{let n=0;for(const g of [...d.guests].sort((x,y)=>String(x.created_at).localeCompare(String(y.created_at)))){const c=d.collectors.find(x=>x.id===g.collector_id);
+  if(g.status!=='no'&&(!c||(!c.active&&!g.paid))){g.collector_id=pick();n++}}return n};
+ const colJson=id=>{const c=d.collectors.find(x=>x.id===id);return c?{name:c.name,phone:c.phone}:null};
  const r=(()=>{switch(fn){
  case'public_info':return{event:ev(),money:money(),coming:d.guests.filter(g=>g.status!=='no').map(g=>({name:g.name,status:g.status})).sort((x,y)=>x.name.localeCompare(y.name,'es')),items:d.items.map(({id,ord,...i})=>i)};
- case'signup':{const g={id:crypto.randomUUID(),token:crypto.randomUUID(),name:a.p_name.trim().slice(0,60),phone:(a.p_phone||'').trim().slice(0,30),status:st(a.p_status),brings:(a.p_brings||'').trim().slice(0,120),paid:false,created_at:new Date().toISOString()};d.guests.push(g);save();return g.token}
- case'me':{const g=d.guests.find(x=>x.token===a.p_token);return g?{guest:{name:g.name,phone:g.phone,status:g.status,brings:g.brings,paid:g.paid},event:ev(),money:money()}:null}
- case'update_me':{const g=d.guests.find(x=>x.token===a.p_token);if(!g)throw new Error('Enlace no válido');if(!a.p_name.trim())throw new Error('Falta el nombre');Object.assign(g,{name:a.p_name.trim(),phone:a.p_phone.trim(),status:st(a.p_status),brings:a.p_brings.trim()});save();return null}
+ case'signup':{if(!String(a.p_name||'').trim())throw new Error('Falta el nombre');const s=st(a.p_status);
+  const g={id:crypto.randomUUID(),token:crypto.randomUUID(),name:a.p_name.trim().slice(0,60),phone:(a.p_phone||'').trim().slice(0,30),status:s,brings:(a.p_brings||'').trim().slice(0,120),paid:false,pay_method:pm(a.p_pay),collector_id:s!=='no'?pick():null,created_at:new Date().toISOString()};d.guests.push(g);save();return g.token}
+ case'me':{const g=d.guests.find(x=>x.token===a.p_token);return g?{guest:{name:g.name,phone:g.phone,status:g.status,brings:g.brings,paid:g.paid,pay_method:g.pay_method},collector:colJson(g.collector_id),event:ev(),money:money()}:null}
+ case'update_me':{const g=d.guests.find(x=>x.token===a.p_token);if(!g)throw new Error('Enlace no válido');if(!a.p_name.trim())throw new Error('Falta el nombre');
+  Object.assign(g,{name:a.p_name.trim(),phone:a.p_phone.trim(),status:st(a.p_status),brings:a.p_brings.trim(),pay_method:pm(a.p_pay)});assign();save();return null}
  case'admin_setup_pin':if(String(a.p_new||'').length<6)return{error:'El PIN debe tener al menos 6 caracteres'};if(S.pin)return{error:'El PIN ya está creado'};S.pin=a.p_new;save();return{ok:true};
  }
  const e=pinErr(a.p_pin);if(e)return{error:e};
  switch(fn){
  case'admin_change_pin':if(String(a.p_new||'').length<6)return{error:'El PIN debe tener al menos 6 caracteres'};S.pin=a.p_new;save();return{ok:true};
- case'admin_state':return{event:ev(),money:money(),guests:[...d.guests].sort((x,y)=>x.name.localeCompare(y.name,'es')),items:[...d.items].sort((x,y)=>x.ord-y.ord)};
+ case'admin_state':{const pp=money().per_person;
+  return{event:ev(),money:money(),
+   collectors:d.collectors.map(c=>{const G=d.guests.filter(g=>g.collector_id===c.id);const paid=G.filter(g=>g.status==='si'&&g.paid).length;
+    return{...c,assigned:G.filter(g=>g.status!=='no').length,paid,unpaid:G.filter(g=>g.status==='si'&&!g.paid).length,cash:G.filter(g=>g.status!=='no'&&g.pay_method==='efectivo').length,collected:Math.round(paid*pp*100)/100}}),
+   guests:[...d.guests].sort((x,y)=>x.name.localeCompare(y.name,'es')),items:[...d.items].sort((x,y)=>x.ord-y.ord)}}
  case'admin_guest_save':{if(!String(a.p_name||'').trim())return{error:'Falta el nombre'};let g=d.guests.find(x=>x.id===a.p_id);
   if(!g){g={id:crypto.randomUUID(),token:crypto.randomUUID(),created_at:new Date().toISOString()};d.guests.push(g)}
-  Object.assign(g,{name:a.p_name.trim(),phone:(a.p_phone||'').trim(),status:st(a.p_status),brings:(a.p_brings||'').trim(),paid:!!a.p_paid});save();return{id:g.id}}
+  Object.assign(g,{name:a.p_name.trim(),phone:(a.p_phone||'').trim(),status:st(a.p_status),brings:(a.p_brings||'').trim(),paid:!!a.p_paid,pay_method:pm(a.p_pay),collector_id:a.p_collector||null});assign();save();return{id:g.id}}
  case'admin_guest_delete':d.guests=d.guests.filter(x=>x.id!==a.p_id);save();return{ok:true};
+ case'admin_collector_save':{if(!String(a.p_name||'').trim())return{error:'Falta el nombre'};let c=d.collectors.find(x=>x.id===a.p_id);
+  if(!c){if(d.collectors.length>=10)return{error:'Máximo 10 recaudadores'};c={id:crypto.randomUUID(),created_at:Date.now()};d.collectors.push(c)}
+  Object.assign(c,{name:a.p_name.trim(),phone:(a.p_phone||'').trim(),active:a.p_active!==false});const moved=assign();save();return{id:c.id,moved}}
+ case'admin_collector_delete':{if(d.guests.some(g=>g.collector_id===a.p_id&&g.paid))return{error:'Ya le han pagado: desactívalo en vez de borrarlo, así no se pierden las cuentas'};
+  d.guests.forEach(g=>{if(g.collector_id===a.p_id)g.collector_id=null});d.collectors=d.collectors.filter(c=>c.id!==a.p_id);const moved=assign();save();return{ok:true,moved}}
+ case'admin_collectors_reshuffle':{if(!d.collectors.some(c=>c.active))return{error:'No hay recaudadores activos'};d.guests.forEach(g=>{if(!g.paid)g.collector_id=null});const moved=assign();save();return{ok:true,moved}}
  case'admin_item_save':{if(!String(a.p_name||'').trim())return{error:'Falta el nombre'};let i=d.items.find(x=>x.id===a.p_id);
   if(!i){i={id:crypto.randomUUID(),ord:Math.max(0,...d.items.map(x=>x.ord))+1};d.items.push(i)}
   Object.assign(i,{name:a.p_name.trim(),cat:a.p_cat||'Otros',q:num(a.p_q),p:num(a.p_p),who:a.p_who||'',done:!!a.p_done,opt:!!a.p_opt});save();return{id:i.id}}
  case'admin_item_delete':d.items=d.items.filter(x=>x.id!==a.p_id);save();return{ok:true};
- case'admin_settings_save':{const p=a.p;for(const k of['event_name','place','addr','start_time','end_time','pay_to','pay_how','notes'])if(k in p)S[k]=String(p[k]);
+ case'admin_settings_save':{const p=a.p;for(const k of['event_name','place','addr','start_time','end_time','pay_how','notes'])if(k in p)S[k]=String(p[k]);
   if('people_override' in p)S.people_override=p.people_override===''||p.people_override==null?null:parseInt(p.people_override);save();return{ok:true}}
  }throw new Error('Función desconocida')})();
  if(r&&r.error)throw new Error(r.error);
@@ -271,8 +302,13 @@ function nav(active){const tok=store.get('nv_token');
  $('nav').innerHTML=[['./','Inicio','home'],tok?['?t='+encodeURIComponent(tok),'Mi ficha','me']:['./#apuntarme','Apuntarme','home2'],['#gestion','Gestión','admin']]
   .map(([h,l,k])=>`<a href="${h}" class="${k===active?'on':''}">${l}</a>`).join('')}
 const segHtml=(cur,dis='')=>`<div class="seg" role="group" aria-label="¿Vienes?">${Object.entries(STATUS).map(([k,l])=>`<button type="button" data-s="${k}" class="${cur===k?'on':''}"${dis}>${l}</button>`).join('')}</div>`;
-function bindSeg(root,onPick){root.querySelectorAll('.seg').forEach(sg=>sg.addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;sg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));onPick&&onPick(b.dataset.s)}))}
-const segVal=root=>root.querySelector('.seg button.on')?.dataset.s||'si';
+function bindSeg(root,onPick){root.querySelectorAll('.seg').forEach(sg=>sg.addEventListener('click',e=>{const b=e.target.closest('[data-s],[data-p]');if(!b)return;sg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));onPick&&onPick(b.dataset.s)}))}
+const segVal=root=>root.querySelector('.seg:not(.pay) button.on')?.dataset.s||'si';
+const PAY={bizum:'Bizum',efectivo:'Efectivo'};
+const payHtml=cur=>`<div class="seg pay" role="group" aria-label="¿Cómo vas a pagar?"><button type="button" data-p="bizum" class="${cur!=='efectivo'?'on':''}">Bizum (recomendado)</button><button type="button" data-p="efectivo" class="${cur==='efectivo'?'on':''}">Efectivo</button></div>`;
+const payVal=root=>root.querySelector('.seg.pay button.on')?.dataset.p||'bizum';
+const CASH_WARN='El efectivo no se recomienda: es más fácil perder la cuenta. Si lo eliges, dáselo en mano a tu recaudador antes de la fiesta.';
+function bindPayWarn(root,id){const w=$(id);root.querySelectorAll('.seg.pay button').forEach(b=>b.addEventListener('click',()=>{w.classList.toggle('hidden',b.dataset.p!=='efectivo')}))}
 function personalLink(tok){return base+'?t='+encodeURIComponent(tok)}
 function shoppingHtml(items,money){const main=items.filter(i=>!i.opt),ex=items.filter(i=>i.opt);
  return `<ul class="lines">${main.map(i=>`<li class="${i.done?'done':''}"><span>${i.done?'✓ ':''}${esc(i.name)} <small>${esc(num(i.q))} × ${eur(num(i.p))}</small></span><b>${eur(num(i.q)*num(i.p))}</b></li>`).join('')}
@@ -295,12 +331,13 @@ async function viewHome(){nav('home');const v=$('view');
      <label class="f">Teléfono <small>Para que los gestores puedan avisarte</small><input type="tel" id="s-phone" name="tel" maxlength="30" autocomplete="tel" inputmode="tel"></label>
      <div class="f" style="display:grid;gap:4px;font-weight:600">¿Vienes?${segHtml('si')}</div>
      <label class="f">¿Qué traes? <small>Opcional: tu bebida, algo para compartir, el cotillón…</small><input type="text" id="s-brings" maxlength="120"></label>
+     <div class="f" style="display:grid;gap:4px;font-weight:600">¿Cómo vas a pagar?${payHtml('bizum')}<p class="warn hidden" id="s-warn">${CASH_WARN}</p></div>
      <button class="btn" type="submit" id="s-go">Apuntarme</button>
      <p class="msg" id="s-msg" aria-live="polite"></p>
     </form>
    </div>
   </section>
-  ${d.event.pay_how||d.event.pay_to?`<section class="card"><h2>Cómo se paga</h2><p style="margin:0">${esc(d.event.pay_how)}${d.event.pay_to?`<br><span class="sub">Lo recoge: ${esc(d.event.pay_to)}</span>`:''}</p></section>`:''}
+  <section class="card"><h2>Cómo se paga</h2><p style="margin:0">Para no saturar a nadie, al apuntarte te toca por sorteo uno de los ${d.event.collectors||'varios'} recaudadores, repartidos a partes iguales. En tu ficha verás a quién y su número de Bizum.</p>${d.event.pay_how?`<p class="sub" style="margin:8px 0 0">${esc(d.event.pay_how)}</p>`:''}</section>
   </div>
   <div>
    <section class="card" aria-labelledby="h-w"><h2 id="h-w">Quién viene</h2>
@@ -310,11 +347,11 @@ async function viewHome(){nav('home');const v=$('view');
    <section class="card" aria-labelledby="h-s"><h2 id="h-s">En qué se va el dinero</h2>
     <p class="sub">Lo que se compra entre todos. El alcohol lo trae cada uno.</p>${shoppingHtml(d.items,d.money)}</section>
   </div></div>`;
- bindSeg(v);
+ bindSeg(v);bindPayWarn(v,'s-warn');
  $('other')&&$('other').addEventListener('click',()=>{$('signupWrap').classList.remove('hidden');$('s-name').focus()});
  $('signup').addEventListener('submit',async e=>{e.preventDefault();const name=$('s-name').value.trim();if(!name)return;
   $('s-go').disabled=true;$('s-msg').className='msg';$('s-msg').textContent='Apuntando…';
-  try{const t=await rpc('signup',{p_name:name,p_phone:$('s-phone').value,p_status:segVal($('signup')),p_brings:$('s-brings').value});
+  try{const t=await rpc('signup',{p_name:name,p_phone:$('s-phone').value,p_status:segVal($('signup')),p_brings:$('s-brings').value,p_pay:payVal($('signup'))});
    if(!store.get('nv_token'))store.set('nv_token',t);location.href='?t='+encodeURIComponent(t)+'&nuevo=1'}
   catch(err){$('s-msg').className='msg err';$('s-msg').textContent=err.message;$('s-go').disabled=false}});
  if(location.hash==='#apuntarme')setTimeout(()=>$('apuntarme')?.scrollIntoView(),50);
@@ -328,7 +365,7 @@ async function viewMe(tok){const v=$('view');
  if(!store.get('nv_token'))store.set('nv_token',tok);
  nav(store.get('nv_token')===tok?'me':'');paintInfo(d.event,d.money);
  const g=d.guest,m=d.money,ev=d.event,link=personalLink(tok),isNew=new URLSearchParams(location.search).has('nuevo');
- const owe=g.status==='no'?0:m.per_person;
+ const owe=g.status==='no'?0:m.per_person,c=d.collector;
  v.innerHTML=`<div class="grid">
   <section class="card" aria-labelledby="h-me">
    <h2 id="h-me">Hola, ${esc(g.name)}</h2>
@@ -337,7 +374,12 @@ async function viewMe(tok){const v=$('view');
    <div class="due"><span class="sub" style="margin:0">Te toca poner</span><span class="big">${eur(owe)}</span>
     <span>${g.paid?'<span class="pill paid">Pagado</span>':'<span class="pill unpaid">Pendiente de pago</span>'} ${g.status==='quiza'?'<span class="pill quiza">Vienes: quizá</span>':''}</span></div>
    <p class="sub" style="margin:8px 0 0">${m.by_confirmed?`Total ${eur(m.total)} entre los ${m.people} confirmados. Puede cambiar si se apunta más gente.`:`Total ${eur(m.total)} calculado para ${m.people} personas.`}</p>
-   ${ev.pay_how||ev.pay_to?`<div class="callout"><b>Cómo pagar</b><br>${esc(ev.pay_how)}${ev.pay_to?`<br><span class="sub">Lo recoge: ${esc(ev.pay_to)}</span>`:''}</div>`:''}`}
+   <div class="callout">${c?`<span class="sub" style="display:block;margin:0 0 4px">${g.pay_method==='efectivo'?'Dale el efectivo en mano a':'Haz el Bizum a'}</span>
+    <div class="paybox"><span class="who">${esc(c.name)}</span>${g.pay_method!=='efectivo'&&c.phone?`<button class="btn2" type="button" id="me-copynum" style="min-height:40px">Copiar número</button>`:''}
+    ${g.pay_method!=='efectivo'&&c.phone?`<span class="num">${esc(c.phone)}</span>`:''}</div>
+    ${ev.pay_how&&g.pay_method!=='efectivo'?`<p class="sub" style="margin:8px 0 0">${esc(ev.pay_how)}</p>`:''}
+    ${g.pay_method==='efectivo'?`<p class="warn">${CASH_WARN}</p>`:''}`
+    :`<b>Cómo pagar</b><p class="sub" style="margin:4px 0 0">Todavía no hay recaudadores asignados. En cuanto los gestores los pongan, aquí verás a quién pagar.</p>`}</div>`}
    <div class="callout"><b>Tu enlace personal</b><span class="sub" style="display:block;margin:2px 0 0">Con él entras a tu ficha desde cualquier móvil u ordenador. No lo compartas.</span>
     <div class="linkbox"><input type="text" readonly value="${esc(link)}" aria-label="Tu enlace" id="me-link"><button class="btn2" type="button" id="me-copy">Copiar</button></div>
     <p style="margin:10px 0 0"><a href="https://wa.me/?text=${encodeURIComponent('Mi enlace para la fiesta de Nochevieja: '+link)}" target="_blank" rel="noopener">Enviármelo por WhatsApp</a></p></div>
@@ -348,15 +390,17 @@ async function viewMe(tok){const v=$('view');
     <label class="f">Teléfono<input type="tel" id="m-phone" maxlength="30" value="${esc(g.phone)}" inputmode="tel"></label>
     <div class="f" style="display:grid;gap:4px;font-weight:600">¿Vienes?${segHtml(g.status)}</div>
     <label class="f">¿Qué traes?<input type="text" id="m-brings" maxlength="120" value="${esc(g.brings)}" placeholder="Tu bebida, algo para compartir…"></label>
+    <div class="f" style="display:grid;gap:4px;font-weight:600">¿Cómo vas a pagar?${payHtml(g.pay_method)}<p class="warn ${g.pay_method==='efectivo'?'':'hidden'}" id="m-warn">${CASH_WARN}</p></div>
     <button class="btn" type="submit" id="m-go">Guardar cambios</button>
     <p class="msg" id="m-msg" aria-live="polite"></p>
    </form>
    <p class="sub" style="margin-top:14px">El pago lo marcan los gestores cuando les llega.</p>
   </section></div>`;
- bindSeg(v);
+ bindSeg(v);bindPayWarn(v,'m-warn');
+ $('me-copynum')&&$('me-copynum').addEventListener('click',e=>copy(c.phone.replace(/\s/g,''),e.target));
  $('me-copy').addEventListener('click',e=>copy(link,e.target));
  $('me-form').addEventListener('submit',async e=>{e.preventDefault();$('m-go').disabled=true;$('m-msg').className='msg';$('m-msg').textContent='Guardando…';
-  try{await rpc('update_me',{p_token:tok,p_name:$('m-name').value,p_phone:$('m-phone').value,p_status:segVal($('me-form')),p_brings:$('m-brings').value});
+  try{await rpc('update_me',{p_token:tok,p_name:$('m-name').value,p_phone:$('m-phone').value,p_status:segVal($('me-form')),p_brings:$('m-brings').value,p_pay:payVal($('me-form'))});
    history.replaceState(null,'','?t='+encodeURIComponent(tok));await viewMe(tok);$('m-msg').className='msg ok';$('m-msg').textContent='Guardado.'}
   catch(err){$('m-msg').className='msg err';$('m-msg').textContent=err.message;$('m-go').disabled=false}});
 }
@@ -390,17 +434,17 @@ function renderAdmin(){const v=$('view'),m=A.money,G=A.guests;
   <div class="stat"><small>Recaudado</small><span class="big">${eur(m.collected)}</span><small>faltan ${eur(Math.max(0,m.total-m.collected))}</small></div>
   <div class="stat"><small>Falta por comprar</small><span class="big">${eur(m.pending)}</span></div>
  </div>
- <div class="tabs" role="tablist">${[['gente','Gente'],['compra','Compra'],['datos','Datos de la fiesta']].map(([k,l])=>`<button type="button" role="tab" aria-selected="${tab===k}" class="${tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}</div>
+ <div class="tabs" role="tablist">${[['gente','Gente'],['recaudadores','Recaudadores'],['compra','Compra'],['datos','Datos de la fiesta']].map(([k,l])=>`<button type="button" role="tab" aria-selected="${tab===k}" class="${tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}</div>
  <div id="pane"></div><p class="msg" id="aMsg" aria-live="polite"></p>`;
  v.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;sess.set('nv_tab',tab);renderAdmin()});
  $('out').addEventListener('click',()=>{sess.del('nv_pin');viewAdmin()});
  $('invite').addEventListener('click',e=>copy(`🎆 ${A.event.event_name||'Nochevieja 2026'} 🎆\n31 de diciembre${A.event.place?' en '+A.event.place:''}${A.event.start_time?' a las '+A.event.start_time:''}.\nApúntate aquí y mira lo que te toca poner:\n${base}`,e.target));
  $('sum').addEventListener('click',e=>copy(summary(),e.target));
- ({gente:paneGente,compra:paneCompra,datos:paneDatos})[tab]()}
+ ({gente:paneGente,recaudadores:paneCol,compra:paneCompra,datos:paneDatos})[tab]()}
 function summary(){const m=A.money,ev=A.event,G=A.guests;
  return [`🎆 ${ev.event_name||'Nochevieja 2026'} 🎆`,`📍 ${ev.place||'Local por confirmar'}${ev.addr?' · '+ev.addr:''}`,`🕙 31 dic a las ${ev.start_time||'22:00'}`,ev.notes?'ℹ️ '+ev.notes:'','',
   `Total: ${eur(m.total)} → ${eur(m.per_person)} cada uno (${m.people} personas)`,`Confirmados: ${m.si}${m.quiza?' (+'+m.quiza+' en duda)':''} · Han pagado: ${m.paid}`,
-  ev.pay_how?'💸 '+ev.pay_how:'','',
+  '💸 Cada uno paga a su recaudador (lo ve en su ficha):',...A.collectors.filter(c=>c.active).map(c=>`• ${c.name}: ${c.assigned} personas`),'',
   'Quién trae qué:',...G.filter(g=>g.brings&&g.status!=='no').map(g=>`• ${g.name}: ${g.brings}`),'',`Apúntate o mira tu ficha: ${base}`].filter((l,i,a)=>!(l===''&&a[i-1]==='')).join('\n')}
 async function act(fn,args){const msg=$('aMsg');msg.className='msg';msg.textContent='Guardando…';
  try{await rpc(fn,{p_pin:pin(),...args});A=await rpc('admin_state',{p_pin:pin()});paintInfo(A.event,A.money);renderAdmin();$('aMsg').className='msg ok';$('aMsg').textContent='Guardado.'}
@@ -409,26 +453,49 @@ function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone+' '
  $('pane').innerHTML=`<section class="card"><div class="row" style="justify-content:space-between"><h2>Gente (${A.guests.length})</h2>
   <input type="search" id="q" placeholder="Buscar" value="${esc(filter)}" style="max-width:240px" aria-label="Buscar persona"></div>
   <p class="sub">Los cambios se guardan al salir de cada campo. «Enlace» copia la ficha personal para mandársela a esa persona.</p>
-  <div class="scroll"><table class="stack"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Viene</th><th>Trae</th><th>Pagado</th><th>Enlace</th><th></th></tr></thead><tbody>
+  <div class="scroll"><table class="stack"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Viene</th><th>Trae</th><th>Paga a</th><th>Cómo</th><th>Pagado</th><th>Enlace</th><th></th></tr></thead><tbody>
   ${G.map(g=>`<tr data-id="${esc(g.id)}">
    <td class="first"><input type="text" data-f="name" value="${esc(g.name)}" maxlength="60" aria-label="Nombre"></td>
    <td data-l="Teléfono"><input type="tel" data-f="phone" value="${esc(g.phone)}" maxlength="30" aria-label="Teléfono" style="min-width:120px"></td>
    <td data-l="Viene"><select data-f="status" aria-label="Viene">${Object.entries(STATUS).map(([k,l])=>`<option value="${k}"${g.status===k?' selected':''}>${l}</option>`).join('')}</select></td>
    <td data-l="Trae"><input type="text" data-f="brings" value="${esc(g.brings)}" maxlength="120" aria-label="Qué trae" style="min-width:140px"></td>
+   <td data-l="Paga a"><select data-f="collector" aria-label="Recaudador"><option value="">— Sin asignar —</option>${A.collectors.map(c=>`<option value="${esc(c.id)}"${g.collector_id===c.id?' selected':''}>${esc(c.name)}${c.active?'':' (inactivo)'}</option>`).join('')}</select></td>
+   <td data-l="Cómo"><select data-f="pay" aria-label="Forma de pago">${Object.entries(PAY).map(([k,l])=>`<option value="${k}"${g.pay_method===k?' selected':''}>${l}</option>`).join('')}</select></td>
    <td data-l="Pagado"><label class="tick"><input type="checkbox" data-f="paid"${g.paid?' checked':''} aria-label="Ha pagado"></label></td>
    <td data-l="Ficha"><button class="btn2" type="button" data-link="${esc(g.token)}" style="min-height:38px;padding:0 12px">Enlace</button></td>
-   <td class="del"><button class="ghost" type="button" data-del aria-label="Borrar a ${esc(g.name)}">✕</button></td></tr>`).join('')||'<tr><td colspan="7" class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</td></tr>'}
+   <td class="del"><button class="ghost" type="button" data-del aria-label="Borrar a ${esc(g.name)}">✕</button></td></tr>`).join('')||'<tr><td colspan="9" class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</td></tr>'}
   </tbody></table></div>
   <form class="add" id="gAdd" autocomplete="off"><input type="text" id="g-name" placeholder="Nombre" required maxlength="60" aria-label="Nombre"><input type="tel" id="g-phone" placeholder="Teléfono" maxlength="30" aria-label="Teléfono"><input type="text" id="g-brings" placeholder="Qué trae" maxlength="120" aria-label="Qué trae"><button class="btn" type="submit">Añadir</button></form></section>`;
  $('q').addEventListener('input',e=>{filter=e.target.value;const p=e.target.selectionStart;paneGente();const q=$('q');q.focus();q.setSelectionRange(p,p)});
  const tb=$('pane').querySelector('tbody');
  tb.addEventListener('change',e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const g=A.guests.find(x=>x.id===tr.dataset.id);
   const val=f=>tr.querySelector(`[data-f="${f}"]`);
-  act('admin_guest_save',{p_id:g.id,p_name:val('name').value,p_phone:val('phone').value,p_status:val('status').value,p_brings:val('brings').value,p_paid:val('paid').checked})});
+  act('admin_guest_save',{p_id:g.id,p_name:val('name').value,p_phone:val('phone').value,p_status:val('status').value,p_brings:val('brings').value,p_paid:val('paid').checked,p_pay:val('pay').value,p_collector:val('collector').value||null})});
  tb.addEventListener('click',e=>{const l=e.target.closest('[data-link]');if(l){copy(personalLink(l.dataset.link),l);return}
   const d=e.target.closest('[data-del]');if(d){const tr=d.closest('tr');const g=A.guests.find(x=>x.id===tr.dataset.id);
    if(d.dataset.sure){act('admin_guest_delete',{p_id:g.id})}else{d.dataset.sure=1;d.textContent='¿Borrar?';d.style.color='var(--red)';setTimeout(()=>{if(d.isConnected){delete d.dataset.sure;d.textContent='✕';d.style.color=''}},3000)}}});
- $('gAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_guest_save',{p_id:null,p_name:$('g-name').value,p_phone:$('g-phone').value,p_status:'si',p_brings:$('g-brings').value,p_paid:false})});
+ $('gAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_guest_save',{p_id:null,p_name:$('g-name').value,p_phone:$('g-phone').value,p_status:'si',p_brings:$('g-brings').value,p_paid:false,p_pay:'bizum',p_collector:null})});
+}
+function paneCol(){const C=A.collectors,unassigned=A.guests.filter(g=>g.status!=='no'&&!g.collector_id).length,pp=A.money.per_person;
+ $('pane').innerHTML=`<section class="card"><div class="row" style="justify-content:space-between"><h2>Recaudadores</h2>
+  <button class="btn2" type="button" id="reshuffle"${C.some(c=>c.active)?'':' disabled'}>Volver a sortear a los que no han pagado</button></div>
+  <p class="sub">Cada persona que se apunta va por sorteo al recaudador activo con menos gente, así nadie se satura. Desactivar a alguien reparte entre los demás a su gente que aún no ha pagado.</p>
+  ${unassigned?`<p class="warn" style="margin:0 0 12px">${unassigned} ${unassigned===1?'persona no tiene':'personas no tienen'} recaudador. Añade al menos uno activo y se reparten solas.</p>`:''}
+  <div class="colgrid">${C.map(c=>{const due=c.paid+c.unpaid;return `<div class="col${c.active?'':' off'}" data-id="${esc(c.id)}">
+   <input type="text" data-f="name" value="${esc(c.name)}" maxlength="40" aria-label="Nombre del recaudador">
+   <input type="tel" data-f="phone" value="${esc(c.phone)}" maxlength="30" placeholder="Número de Bizum" aria-label="Número de Bizum">
+   <div class="meter" title="Pagados"><i style="width:${due?(c.paid/due*100).toFixed(0):0}%"></i></div>
+   <div class="nums">${c.assigned} personas · ${c.paid} pagados · ${c.unpaid} pendientes${c.cash?` · ${c.cash} en efectivo`:''}<br>Recaudado: <b style="color:var(--ink)">${eur(c.collected)}</b> de ${eur(due*pp)}</div>
+   <div class="row" style="justify-content:space-between"><label class="row" style="gap:6px;font-size:14px"><input type="checkbox" data-f="active"${c.active?' checked':''}> Activo</label>
+   <button class="ghost" type="button" data-del aria-label="Borrar a ${esc(c.name)}">Borrar</button></div></div>`}).join('')||'<p class="msg">Todavía no hay recaudadores. Añade 3 o 4 abajo.</p>'}</div>
+  <form class="add" id="cAdd" autocomplete="off" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto"><input type="text" id="c-name" placeholder="Nombre" required maxlength="40" aria-label="Nombre"><input type="tel" id="c-phone" placeholder="Número de Bizum" maxlength="30" aria-label="Número de Bizum"><button class="btn" type="submit">Añadir recaudador</button></form></section>`;
+ const grid=$('pane').querySelector('.colgrid');
+ grid.addEventListener('change',e=>{const box=e.target.closest('.col[data-id]');if(!box)return;const val=f=>box.querySelector(`[data-f="${f}"]`);
+  act('admin_collector_save',{p_id:box.dataset.id,p_name:val('name').value,p_phone:val('phone').value,p_active:val('active').checked})});
+ grid.addEventListener('click',e=>{const d=e.target.closest('[data-del]');if(!d)return;const id=d.closest('.col').dataset.id;
+  if(d.dataset.sure)act('admin_collector_delete',{p_id:id});else{d.dataset.sure=1;d.textContent='¿Seguro?';d.style.color='var(--red)';setTimeout(()=>{if(d.isConnected){delete d.dataset.sure;d.textContent='Borrar';d.style.color=''}},3000)}});
+ $('cAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_collector_save',{p_id:null,p_name:$('c-name').value,p_phone:$('c-phone').value,p_active:true})});
+ $('reshuffle').addEventListener('click',e=>{const b=e.target;if(b.dataset.sure)act('admin_collectors_reshuffle',{});else{b.dataset.sure=1;b.textContent='¿Seguro? Pulsa otra vez';setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent='Volver a sortear a los que no han pagado'}},3000)}});
 }
 function paneCompra(){const I=A.items;
  $('pane').innerHTML=`<section class="card"><h2>Lista de la compra</h2><p class="sub">Marca «Extra» para lo que solo se compra si sobra dinero: no cuenta en el total.</p>
@@ -462,8 +529,7 @@ function paneDatos(){const ev=A.event,fixed=ev.people_override!=null;
    <div class="two"><label class="f">Hora de llegada<input type="time" id="e-start" value="${esc(ev.start_time)}"></label><label class="f">Hasta<input type="text" id="e-end" maxlength="40" value="${esc(ev.end_time)}" placeholder="p. ej. 06:00"></label></div>
    <label class="f">Nombre del local<input type="text" id="e-place" maxlength="80" value="${esc(ev.place)}"></label>
    <label class="f">Dirección<input type="text" id="e-addr" maxlength="160" value="${esc(ev.addr)}"></label>
-   <label class="f">Quién recoge el dinero<input type="text" id="e-payto" maxlength="80" value="${esc(ev.pay_to)}"></label>
-   <label class="f">Cómo pagar <small>p. ej. Bizum al 600… con el concepto «Nochevieja + nombre»</small><textarea id="e-payhow" maxlength="200">${esc(ev.pay_how)}</textarea></label>
+   <label class="f">Instrucciones de pago <small>Se añade a lo que ve cada uno junto a su recaudador, p. ej. el concepto del Bizum</small><textarea id="e-payhow" maxlength="200">${esc(ev.pay_how)}</textarea></label>
    <label class="f">Nota para todos<textarea id="e-notes" maxlength="400">${esc(ev.notes)}</textarea></label>
    <fieldset style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><legend style="font-weight:600;padding:0 6px">Repartir el gasto</legend>
     <label class="row"><input type="radio" name="div" value="conf"${fixed?'':' checked'}> Entre los confirmados (${A.money.si})</label>
@@ -473,7 +539,7 @@ function paneDatos(){const ev=A.event,fixed=ev.people_override!=null;
    <form class="stack-form" id="pForm"><label class="f">PIN nuevo<input type="password" id="p-new" minlength="6" required autocomplete="new-password"></label>
    <label class="f">Repítelo<input type="password" id="p-new2" minlength="6" required autocomplete="new-password"></label><button class="btn2" type="submit">Cambiar PIN</button><p class="msg" id="pMsg"></p></form></section></div>`;
  $('sForm').addEventListener('submit',e=>{e.preventDefault();const f=document.querySelector('input[name=div]:checked').value==='fixed';
-  act('admin_settings_save',{p:{event_name:$('e-name').value,start_time:$('e-start').value,end_time:$('e-end').value,place:$('e-place').value,addr:$('e-addr').value,pay_to:$('e-payto').value,pay_how:$('e-payhow').value,notes:$('e-notes').value,people_override:f?String(Math.max(1,Math.round(num($('e-people').value))||1)):''}})});
+  act('admin_settings_save',{p:{event_name:$('e-name').value,start_time:$('e-start').value,end_time:$('e-end').value,place:$('e-place').value,addr:$('e-addr').value,pay_how:$('e-payhow').value,notes:$('e-notes').value,people_override:f?String(Math.max(1,Math.round(num($('e-people').value))||1)):''}})});
  $('pForm').addEventListener('submit',async e=>{e.preventDefault();const n=$('p-new').value,msg=$('pMsg');
   if(n!==$('p-new2').value){msg.className='msg err';msg.textContent='Los PIN no coinciden';return}
   try{await rpc('admin_change_pin',{p_pin:pin(),p_new:n});sess.set('nv_pin',n);msg.className='msg ok';msg.textContent='PIN cambiado.';e.target.reset()}catch(err){msg.className='msg err';msg.textContent=err.message}});

@@ -18,6 +18,8 @@ Las tablas están cerradas; la web solo llama a funciones:
 - con el enlace personal: `me`, `update_me`
 - con PIN: `admin_*` (8 fallos seguidos bloquean el PIN 15 minutos)
 
-Los teléfonos solo los ven los gestores. En la parte pública solo aparecen los nombres de quien viene.
+Pagos: cada persona recibe por sorteo equitativo uno de los recaudadores activos (el que menos gente tiene; empate al azar) y ve en su ficha su número de Bizum. También puede elegir efectivo (no recomendado).
+
+Los teléfonos de los invitados solo los ven los gestores; el número de cada recaudador solo lo ve quien tiene que pagarle. En la parte pública solo aparecen los nombres de quien viene.
 
 Supabase gratis pausa el proyecto tras una semana sin uso; se reactiva desde su panel.
