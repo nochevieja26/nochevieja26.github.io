@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nochevieja 2026</title>
+<meta name="description" content="Apúntate a la fiesta de Nochevieja 2026">
+<meta name="theme-color" content="#1a0710">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a0710'/%3E%3Cg stroke='%23f0c35a' stroke-width='5' stroke-linecap='round'%3E%3Cpath d='M32 10v12M32 42v12M10 32h12M42 32h12M17 17l8 8M39 39l8 8M47 17l-8 8M25 39l-8 8'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+/* VOICE  fiesta entre amigos: alegre, clara y práctica en el móvil
+   IDEA   la entrada de la fiesta: cartel nocturno arriba y, debajo, la ficha de cada uno
+   PICTURE cielo granate con fuegos dibujados y la cuenta atrás grande; en la ficha, lo que te toca pagar en grande
+   COLOUR granate terciopelo, oro de cava como campo principal, verde uva para "sí / pagado", rojo cotillón para borrar
+   TYPE   Anton (cifras y títulos) + DM Sans (texto)
+   LAYOUT cartel a todo ancho; franja dorada con los datos; dos columnas que se apilan por debajo de 900px */
+:root{color-scheme:dark;--bg:#1a0710;--panel:#26101b;--panel2:#341826;--line:#4a2636;--ink:#fbf1e4;--mute:#c9aebb;--gold:#f0c35a;--grape:#a6dc5c;--red:#ff4d5e;--wine:#7a1e3c}
+:root[data-theme=light],:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "DM Sans",system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3,.big{font-family:Anton,Impact,sans-serif;font-weight:400;line-height:1.05;letter-spacing:.01em;text-wrap:balance;margin:0}
+a{color:var(--gold)}
+.band{padding-block:clamp(24px,4vw,52px);padding-left:max(5vw,16px);padding-right:max(5vw,16px)}
+.wrap{max-width:1180px;margin:0 auto}
+.hidden{display:none!important}
+/* hero */
+.hero{position:relative;overflow:hidden;background:linear-gradient(180deg,#0d0309,#2c0b1c 70%,#3d1022);padding-top:clamp(28px,5vw,56px)}
+.hero svg.sky{position:absolute;inset:0;width:100%;height:100%}
+.hero .wrap{position:relative}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:clamp(24px,6vw,64px)}
+.brand{font:400 20px Anton,Impact,sans-serif;color:var(--gold);text-decoration:none}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.nav a{color:var(--ink);text-decoration:none;font-weight:700;font-size:15px;padding:8px 14px;border-radius:99px;border:1px solid #ffffff30}
+.nav a.on{background:var(--gold);color:#2a0c17;border-color:var(--gold)}
+.hero h1{font-size:clamp(44px,8vw,92px)}
+.lead{color:var(--mute);margin:8px 0 0;font-size:17px;max-width:46ch}
+.count{display:flex;flex-wrap:wrap;gap:clamp(10px,2.6vw,28px);margin-top:18px}
+.count div{display:grid}
+.count b{font:400 clamp(40px,8vw,84px)/.95 Anton,Impact,sans-serif;font-variant-numeric:tabular-nums}
+.count span{color:var(--mute);font-weight:600;font-size:14px}
+@keyframes pop{0%{transform:scale(.3);opacity:0}25%{opacity:1}100%{transform:scale(1);opacity:0}}
+.burst{transform-box:fill-box;transform-origin:center;animation:pop 4s ease-out infinite}
+@media(prefers-reduced-motion:reduce){.burst{animation:none;opacity:.8}}
+/* info strip */
+.info{background:var(--gold);color:#2a0c17}
+.info .wrap{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px 24px}
+.info .k{font-weight:700;font-size:14px;display:block}
+.info .v{font:400 clamp(22px,2.6vw,30px)/1.1 Anton,Impact,sans-serif;overflow-wrap:anywhere}
+.info a{color:#2a0c17;font-weight:700;font-size:15px}
+.info .note{grid-column:1/-1;margin:0;font-weight:600}
+@media(max-width:820px){.info .wrap{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* layout */
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(18px,3vw,32px);align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:clamp(16px,2.6vw,28px)}
+.card+.card{margin-top:clamp(18px,3vw,32px)}
+.card h2{font-size:clamp(28px,3.4vw,38px);margin-bottom:4px}
+.card h3{font-size:22px;margin:18px 0 8px}
+.sub{color:var(--mute);margin:0 0 16px;font-size:15px}
+.stack-form{display:grid;gap:12px}
+label.f{display:grid;gap:4px;font-weight:600;font-size:15px}
+label.f small{color:var(--mute);font-weight:400}
+input,select,button,textarea{font:inherit;font-size:16px;color:var(--ink)}
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=time],input[type=search],select,textarea{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-height:46px;width:100%}
+textarea{min-height:80px;resize:vertical}
+input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--grape);outline-offset:2px}
+input[type=checkbox]{width:24px;height:24px;accent-color:var(--grape)}
+button{min-height:46px;border-radius:99px;border:0;padding:0 20px;font-weight:700;cursor:pointer}
+button:disabled{opacity:.55;cursor:default}
+.btn{background:var(--gold);color:#2a0c17}
+.btn:hover:not(:disabled){background:#ffd47a}
+.btn2{background:transparent;color:var(--ink);border:2px solid var(--gold)}
+.ghost{background:transparent;color:var(--mute);padding:0 10px;border-radius:10px}
+.ghost:hover{color:var(--red)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.seg{display:flex;border-radius:12px;overflow:hidden;border:1px solid var(--line);width:max-content;max-width:100%}
+.seg button{border-radius:0;padding:0 16px;background:transparent;color:var(--mute);font-size:15px}
+.seg button.on[data-s=si]{background:var(--grape);color:#16250a}
+.seg button.on[data-s=quiza]{background:var(--gold);color:#2a1d0b}
+.seg button.on[data-s=no]{background:#5d3a4b;color:var(--ink)}
+.msg{font-size:14px;color:var(--mute);min-height:1.4em;margin:0}
+.msg.err{color:#ff8a95}
+.msg.ok{color:var(--grape)}
+.pill{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.pill.si{background:var(--grape);color:#16250a}.pill.quiza{background:var(--gold);color:#2a1d0b}.pill.no{background:#5d3a4b}
+.pill.paid{background:var(--grape);color:#16250a}.pill.unpaid{background:var(--red);color:#2a0c17}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips span{background:var(--panel2);border-radius:99px;padding:4px 12px;font-size:14px;font-weight:600}
+.chips span.q{opacity:.6}
+.lines{list-style:none;margin:0;padding:0}
+.lines li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.lines li b{white-space:nowrap;font-variant-numeric:tabular-nums}
+.lines li.done span{color:var(--mute);text-decoration:line-through}
+.lines li.tot{border:0;font-weight:700}
+.lines small{color:var(--mute)}
+.callout{background:var(--panel2);border-radius:12px;padding:14px 16px;margin-top:14px}
+.linkbox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}
+.linkbox input{font-size:14px}
+.banner{background:var(--wine);color:var(--ink);padding:10px max(5vw,16px);font-size:14px;font-weight:600}
+/* ficha */
+.due{display:grid;gap:4px;margin:6px 0 4px}
+.due .big{font-size:clamp(64px,14vw,120px);color:var(--gold);line-height:.95}
+/* admin */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px}
+.stat small{color:var(--mute);font-weight:600;font-size:14px;display:block}
+.stat .big{font-size:clamp(30px,4vw,40px);white-space:nowrap}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button{background:var(--panel2);color:var(--mute)}
+.tabs button.on{background:var(--gold);color:#2a0c17}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:13px;color:var(--mute);text-align:start;font-weight:600;padding:6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.num,th.num{text-align:end;white-space:nowrap;font-variant-numeric:tabular-nums}
+td input[type=text],td input[type=tel],td input[type=number],td select{min-height:40px;padding:6px 8px;font-size:15px}
+.tick{display:grid;place-items:center;min-width:44px;min-height:44px}
+.add{display:grid;gap:8px;margin-top:14px;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) auto}
+.add.items{grid-template-columns:minmax(0,2fr) minmax(0,1fr) 80px 100px auto}
+@media(max-width:700px){.add,.add.items{grid-template-columns:1fr 1fr}.add>:first-child,.add button{grid-column:1/-1}}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(max-width:600px){.two{grid-template-columns:1fr}}
+footer{color:var(--mute);font-size:14px}
+footer a{color:var(--mute)}
+@media(max-width:700px){
+ .stack thead{display:none}
+ .stack tr{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:4px 8px;padding:12px 0;border-bottom:1px solid var(--line)}
+ .stack td{border:0;padding:0;display:flex;align-items:center;justify-content:space-between;gap:10px;grid-column:1}
+ .stack td::before{content:attr(data-l);color:var(--mute);font-size:13px;flex:none}
+ .stack td.first::before,.stack td.del::before{content:none}
+ .stack td.del{grid-column:2;grid-row:1}
+ .stack td input,.stack td select{max-width:65%}
+ .stack td.first input{max-width:none}
+}
+</style>
+</head>
+<body>
+<div class="banner hidden" id="demo">Modo demostración: los datos son de prueba y solo se guardan en este navegador.</div>
+<header class="hero band" id="hero">
+  <svg class="sky" viewBox="0 0 1200 420" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+    <defs><g id="ray"><line x1="0" y1="-14" x2="0" y2="-54" stroke-width="4" stroke-linecap="round"/><circle cx="0" cy="-64" r="4"/></g></defs>
+    <g id="stars"></g><g id="bursts"></g>
+  </svg>
+  <div class="wrap">
+    <div class="top">
+      <a class="brand" href="./" id="brand">Nochevieja 2026</a>
+      <nav class="nav" id="nav"></nav>
+    </div>
+    <h1 id="title">Nochevieja 2026</h1>
+    <p class="lead" id="lead">Fin de año con los amigos. Apúntate, mira lo que te toca poner y qué trae cada uno.</p>
+    <div class="count" aria-label="Cuenta atrás">
+      <div><b id="cd-d">--</b><span>días</span></div><div><b id="cd-h">--</b><span>horas</span></div>
+      <div><b id="cd-m">--</b><span>min</span></div><div><b id="cd-s">--</b><span>seg</span></div>
+    </div>
+  </div>
+</header>
+
+<section class="info band" id="info" aria-label="Datos de la fiesta">
+  <div class="wrap">
+    <div><span class="k">Cuándo</span><span class="v">31 dic · <span id="i-time">22:00</span></span></div>
+    <div><span class="k">Dónde</span><span class="v" id="i-place">Por confirmar</span></div>
+    <div><span class="k">Dirección</span><span class="v" id="i-addr">Por confirmar</span> <span id="i-map"></span></div>
+    <div><span class="k">Cada uno pone</span><span class="v" id="i-pp">—</span> <span class="k" id="i-ppnote" style="font-weight:600"></span></div>
+    <p class="note" id="i-notes"></p>
+  </div>
+</section>
+
+<main class="band" id="main"><div class="wrap" id="view"><p class="msg">Cargando…</p></div></main>
+
+<footer class="band" style="padding-top:0"><div class="wrap row" style="justify-content:space-between">
+  <span>¡Feliz 2027!</span><a href="#gestion" id="adminLink">Zona de gestores</a>
+</div></footer>
+
+<script src="config.js"></script>
+<script>
+{
+/* ================= utilidades ================= */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isFinite(n)&&n>=0?n:0};
+const eur=n=>{n=Number(n)||0;return n.toLocaleString('es-ES',{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2})+' €'};
+const CATS=['Local','Bebida','Picoteo','Música','Decoración','Otros'];
+const STATUS={si:'Sí',quiza:'Quizá',no:'No'};
+const CFG=window.NV_CONFIG||{};
+const DEMO=!(CFG.SUPABASE_URL&&CFG.SUPABASE_KEY);
+const base=location.origin+location.pathname;
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const sess={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}},del(k){try{sessionStorage.removeItem(k)}catch(e){}}};
+async function copy(txt,el){try{await navigator.clipboard.writeText(txt);if(el){const o=el.textContent;el.textContent='¡Copiado!';setTimeout(()=>el.textContent=o,1600)}}catch(e){prompt('Copia este texto:',txt)}}
+
+/* ================= API ================= */
+async function rpc(fn,args={}){
+ if(DEMO)return mock(fn,args);
+ const h={'apikey':CFG.SUPABASE_KEY,'Content-Type':'application/json'};
+ if(String(CFG.SUPABASE_KEY).startsWith('eyJ'))h.Authorization='Bearer '+CFG.SUPABASE_KEY;
+ let r;try{r=await fetch(CFG.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',headers:h,body:JSON.stringify(args)})}
+ catch(e){throw new Error('No hay conexión. Prueba otra vez en un momento.')}
+ const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch(e){}
+ if(!r.ok)throw new Error((j&&(j.message||j.hint))||'Error del servidor ('+r.status+')');
+ if(j&&j.error)throw new Error(j.error);
+ return j;
+}
+
+/* ----- modo demostración: misma lógica que schema.sql, guardada en este navegador ----- */
+function demoDb(){let d=null;try{d=JSON.parse(store.get('nv_demo')||'null')}catch(e){}
+ if(!d){const u=()=>crypto.randomUUID();
+  d={settings:{event_name:'Nochevieja 2026',place:'Local La Terraza',addr:'Calle del Ejemplo 12, Madrid',start_time:'22:00',end_time:'06:00',pay_to:'Juan',pay_how:'Bizum al 600 000 000 con el concepto «Nochevieja + tu nombre»',notes:'El alcohol lo trae cada uno.',people_override:35,pin:null},
+   guests:[['Laura','600 111 111','si','Hielo',true],['Dani','600 222 222','si','Ginebra y tónica',false],['Marta','','quiza','',false],['Sergio','600 333 333','si','Cotillón',true]].map(([name,phone,status,brings,paid])=>({id:u(),token:u(),name,phone,status,brings,paid,created_at:new Date().toISOString()})),
+   items:[['Alquiler del local','Local',1,500,false],['Vasos de cubata (pack de 100)','Bebida',2,6,false],['Hielo (bolsa de 2 kg)','Bebida',15,1.5,false],['Chuches surtidas (bolsa de 1 kg)','Picoteo',4,7,false],['Alquiler de altavoces','Música',1,90,false],['Refresco para mezclar (botella de 2 L)','Bebida',35,1,true]].map(([name,cat,q,p,opt],i)=>({id:u(),name,cat,q,p,who:'',done:false,opt,ord:i+1}))};
+  store.set('nv_demo',JSON.stringify(d))}
+ return d}
+function mock(fn,a){const d=demoDb(),S=d.settings,save=()=>store.set('nv_demo',JSON.stringify(d));
+ const money=()=>{let total=0,pending=0,extra=0;d.items.forEach(i=>{const s=i.q*i.p;if(i.opt)extra+=s;else{total+=s;if(!i.done)pending+=s}});
+  const si=d.guests.filter(g=>g.status==='si').length,quiza=d.guests.filter(g=>g.status==='quiza').length,paid=d.guests.filter(g=>g.status==='si'&&g.paid).length;
+  const n=Math.max(1,S.people_override??si),pp=Math.ceil(total/n*100)/100;
+  return{total,pending,extra,people:n,by_confirmed:S.people_override==null,per_person:pp,extra_per_person:Math.ceil(extra/n*100)/100,si,quiza,paid,collected:Math.round(paid*pp*100)/100}};
+ const ev=()=>({...S,pin:undefined,has_pin:!!S.pin});
+ const pinErr=p=>!S.pin?'Todavía no hay PIN de gestor':p!==S.pin?'PIN incorrecto':null;
+ const st=v=>['si','quiza','no'].includes(v)?v:'si';
+ const r=(()=>{switch(fn){
+ case'public_info':return{event:ev(),money:money(),coming:d.guests.filter(g=>g.status!=='no').map(g=>({name:g.name,status:g.status})).sort((x,y)=>x.name.localeCompare(y.name,'es')),items:d.items.map(({id,ord,...i})=>i)};
+ case'signup':{const g={id:crypto.randomUUID(),token:crypto.randomUUID(),name:a.p_name.trim().slice(0,60),phone:(a.p_phone||'').trim().slice(0,30),status:st(a.p_status),brings:(a.p_brings||'').trim().slice(0,120),paid:false,created_at:new Date().toISOString()};d.guests.push(g);save();return g.token}
+ case'me':{const g=d.guests.find(x=>x.token===a.p_token);return g?{guest:{name:g.name,phone:g.phone,status:g.status,brings:g.brings,paid:g.paid},event:ev(),money:money()}:null}
+ case'update_me':{const g=d.guests.find(x=>x.token===a.p_token);if(!g)throw new Error('Enlace no válido');if(!a.p_name.trim())throw new Error('Falta el nombre');Object.assign(g,{name:a.p_name.trim(),phone:a.p_phone.trim(),status:st(a.p_status),brings:a.p_brings.trim()});save();return null}
+ case'admin_setup_pin':if(String(a.p_new||'').length<6)return{error:'El PIN debe tener al menos 6 caracteres'};if(S.pin)return{error:'El PIN ya está creado'};S.pin=a.p_new;save();return{ok:true};
+ }
+ const e=pinErr(a.p_pin);if(e)return{error:e};
+ switch(fn){
+ case'admin_change_pin':if(String(a.p_new||'').length<6)return{error:'El PIN debe tener al menos 6 caracteres'};S.pin=a.p_new;save();return{ok:true};
+ case'admin_state':return{event:ev(),money:money(),guests:[...d.guests].sort((x,y)=>x.name.localeCompare(y.name,'es')),items:[...d.items].sort((x,y)=>x.ord-y.ord)};
+ case'admin_guest_save':{if(!String(a.p_name||'').trim())return{error:'Falta el nombre'};let g=d.guests.find(x=>x.id===a.p_id);
+  if(!g){g={id:crypto.randomUUID(),token:crypto.randomUUID(),created_at:new Date().toISOString()};d.guests.push(g)}
+  Object.assign(g,{name:a.p_name.trim(),phone:(a.p_phone||'').trim(),status:st(a.p_status),brings:(a.p_brings||'').trim(),paid:!!a.p_paid});save();return{id:g.id}}
+ case'admin_guest_delete':d.guests=d.guests.filter(x=>x.id!==a.p_id);save();return{ok:true};
+ case'admin_item_save':{if(!String(a.p_name||'').trim())return{error:'Falta el nombre'};let i=d.items.find(x=>x.id===a.p_id);
+  if(!i){i={id:crypto.randomUUID(),ord:Math.max(0,...d.items.map(x=>x.ord))+1};d.items.push(i)}
+  Object.assign(i,{name:a.p_name.trim(),cat:a.p_cat||'Otros',q:num(a.p_q),p:num(a.p_p),who:a.p_who||'',done:!!a.p_done,opt:!!a.p_opt});save();return{id:i.id}}
+ case'admin_item_delete':d.items=d.items.filter(x=>x.id!==a.p_id);save();return{ok:true};
+ case'admin_settings_save':{const p=a.p;for(const k of['event_name','place','addr','start_time','end_time','pay_to','pay_how','notes'])if(k in p)S[k]=String(p[k]);
+  if('people_override' in p)S.people_override=p.people_override===''||p.people_override==null?null:parseInt(p.people_override);save();return{ok:true}}
+ }throw new Error('Función desconocida')})();
+ if(r&&r.error)throw new Error(r.error);
+ return JSON.parse(JSON.stringify(r??null));
+}
+
+/* ================= decoración y cuenta atrás ================= */
+{let s='',r=11;const rnd=()=>(r=r*16807%2147483647)/2147483647;
+ for(let i=0;i<70;i++)s+=`<circle cx="${(rnd()*1200)|0}" cy="${(rnd()*400)|0}" r="${rnd()<.15?1.8:1}" fill="#fbf1e4" opacity="${(.2+rnd()*.5).toFixed(2)}"/>`;
+ $('stars').innerHTML=s;
+ const B=[[960,130,1.2,'#f0c35a',0],[1110,250,.8,'#ff4d5e',1.2],[820,280,.7,'#a6dc5c',2.1],[1060,70,.55,'#fbf1e4',.6],[700,120,.5,'#ff4d5e',2.8]];
+ let ray='';for(let a=0;a<360;a+=22.5)ray+=`<use href="#ray" transform="rotate(${a})"/>`;
+ $('bursts').innerHTML=B.map(([x,y,k,c,dl])=>`<g transform="translate(${x} ${y}) scale(${k})"><g class="burst" style="animation-delay:${dl}s" stroke="${c}" fill="${c}">${ray}</g></g>`).join('')}
+const target=new Date('2027-01-01T00:00:00+01:00').getTime(),pad=n=>String(n).padStart(2,'0');
+function tick(){let t=target-Date.now();if(t<=0){document.querySelector('.count').innerHTML='<div><b>¡Feliz 2027!</b></div>';clearInterval(tm);return}
+ const d=Math.floor(t/864e5);t%=864e5;const h=Math.floor(t/36e5);t%=36e5;
+ $('cd-d').textContent=d;$('cd-h').textContent=pad(h);$('cd-m').textContent=pad(Math.floor(t/6e4));$('cd-s').textContent=pad(Math.floor(t%6e4/1e3))}
+const tm=setInterval(tick,1000);tick();
+
+/* ================= común ================= */
+function paintInfo(ev,money){
+ $('title').textContent=ev.event_name||'Nochevieja 2026';$('brand').textContent=ev.event_name||'Nochevieja 2026';document.title=ev.event_name||'Nochevieja 2026';
+ $('i-time').textContent=ev.start_time||'22:00';$('i-place').textContent=ev.place||'Por confirmar';$('i-addr').textContent=ev.addr||'Por confirmar';
+ $('i-map').innerHTML=ev.addr?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.addr)}" target="_blank" rel="noopener">Ver en el mapa</a>`:'';
+ $('i-pp').textContent=money?eur(money.per_person):'—';
+ $('i-ppnote').textContent=money?(money.by_confirmed?`entre los ${money.people} confirmados`:`calculado para ${money.people} personas`):'';
+ $('i-notes').textContent=[ev.end_time?'Hasta las '+ev.end_time+'.':'',ev.notes||''].filter(Boolean).join(' ');
+}
+function nav(active){const tok=store.get('nv_token');
+ $('nav').innerHTML=[['./','Inicio','home'],tok?['?t='+encodeURIComponent(tok),'Mi ficha','me']:['./#apuntarme','Apuntarme','home2'],['#gestion','Gestión','admin']]
+  .map(([h,l,k])=>`<a href="${h}" class="${k===active?'on':''}">${l}</a>`).join('')}
+const segHtml=(cur,dis='')=>`<div class="seg" role="group" aria-label="¿Vienes?">${Object.entries(STATUS).map(([k,l])=>`<button type="button" data-s="${k}" class="${cur===k?'on':''}"${dis}>${l}</button>`).join('')}</div>`;
+function bindSeg(root,onPick){root.querySelectorAll('.seg').forEach(sg=>sg.addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;sg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));onPick&&onPick(b.dataset.s)}))}
+const segVal=root=>root.querySelector('.seg button.on')?.dataset.s||'si';
+function personalLink(tok){return base+'?t='+encodeURIComponent(tok)}
+function shoppingHtml(items,money){const main=items.filter(i=>!i.opt),ex=items.filter(i=>i.opt);
+ return `<ul class="lines">${main.map(i=>`<li class="${i.done?'done':''}"><span>${i.done?'✓ ':''}${esc(i.name)} <small>${esc(num(i.q))} × ${eur(num(i.p))}</small></span><b>${eur(num(i.q)*num(i.p))}</b></li>`).join('')}
+  <li class="tot"><span>Total</span><b>${eur(money.total)}</b></li></ul>
+  ${ex.length?`<h3>Si sobra dinero</h3><ul class="lines">${ex.map(i=>`<li><span>${esc(i.name)} <small>${esc(num(i.q))} × ${eur(num(i.p))}</small></span><b>${eur(num(i.q)*num(i.p))}</b></li>`).join('')}</ul><p class="sub" style="margin-top:8px">Sería +${eur(money.extra_per_person)} por persona. No cuenta todavía.</p>`:''}`}
+
+/* ================= vista: inicio ================= */
+async function viewHome(){nav('home');const v=$('view');
+ const d=await rpc('public_info');paintInfo(d.event,d.money);
+ const tok=store.get('nv_token'),si=d.coming.filter(c=>c.status==='si'),qz=d.coming.filter(c=>c.status==='quiza');
+ v.innerHTML=`<div class="grid">
+  <div><section class="card" id="apuntarme" aria-labelledby="h-a">
+   ${tok?`<h2 id="h-a">Ya estás apuntado</h2><p class="sub">Desde tu ficha ves lo que te toca pagar y puedes cambiar tus datos.</p><a class="btn" style="display:inline-grid;place-items:center;min-height:46px;padding:0 20px;border-radius:99px;text-decoration:none" href="?t=${encodeURIComponent(tok)}">Ver mi ficha</a>
+    <p class="sub" style="margin-top:14px">¿Apuntas a otra persona desde este móvil? <button class="ghost" id="other" type="button" style="padding:0;min-height:0;color:var(--gold)">Apuntar a alguien más</button></p>`:''}
+   <div id="signupWrap" class="${tok?'hidden':''}">
+    <h2 id="h-a">${tok?'Apuntar a alguien más':'Apúntate'}</h2>
+    <p class="sub">Solo te lleva un minuto. Después tendrás tu propio enlace para ver lo que te toca pagar.</p>
+    <form class="stack-form" id="signup" autocomplete="on">
+     <label class="f">Nombre<input type="text" id="s-name" name="name" required maxlength="60" autocomplete="name"></label>
+     <label class="f">Teléfono <small>Para que los gestores puedan avisarte</small><input type="tel" id="s-phone" name="tel" maxlength="30" autocomplete="tel" inputmode="tel"></label>
+     <div class="f" style="display:grid;gap:4px;font-weight:600">¿Vienes?${segHtml('si')}</div>
+     <label class="f">¿Qué traes? <small>Opcional: tu bebida, algo para compartir, el cotillón…</small><input type="text" id="s-brings" maxlength="120"></label>
+     <button class="btn" type="submit" id="s-go">Apuntarme</button>
+     <p class="msg" id="s-msg" aria-live="polite"></p>
+    </form>
+   </div>
+  </section>
+  ${d.event.pay_how||d.event.pay_to?`<section class="card"><h2>Cómo se paga</h2><p style="margin:0">${esc(d.event.pay_how)}${d.event.pay_to?`<br><span class="sub">Lo recoge: ${esc(d.event.pay_to)}</span>`:''}</p></section>`:''}
+  </div>
+  <div>
+   <section class="card" aria-labelledby="h-w"><h2 id="h-w">Quién viene</h2>
+    <p class="sub">${si.length} confirmados${qz.length?` y ${qz.length} en duda`:''}.</p>
+    <div class="chips">${si.map(c=>`<span>${esc(c.name)}</span>`).join('')}${qz.map(c=>`<span class="q" title="En duda">${esc(c.name)}?</span>`).join('')}${d.coming.length?'':'<span class="q">Todavía nadie. ¡Sé el primero!</span>'}</div>
+   </section>
+   <section class="card" aria-labelledby="h-s"><h2 id="h-s">En qué se va el dinero</h2>
+    <p class="sub">Lo que se compra entre todos. El alcohol lo trae cada uno.</p>${shoppingHtml(d.items,d.money)}</section>
+  </div></div>`;
+ bindSeg(v);
+ $('other')&&$('other').addEventListener('click',()=>{$('signupWrap').classList.remove('hidden');$('s-name').focus()});
+ $('signup').addEventListener('submit',async e=>{e.preventDefault();const name=$('s-name').value.trim();if(!name)return;
+  $('s-go').disabled=true;$('s-msg').className='msg';$('s-msg').textContent='Apuntando…';
+  try{const t=await rpc('signup',{p_name:name,p_phone:$('s-phone').value,p_status:segVal($('signup')),p_brings:$('s-brings').value});
+   if(!store.get('nv_token'))store.set('nv_token',t);location.href='?t='+encodeURIComponent(t)+'&nuevo=1'}
+  catch(err){$('s-msg').className='msg err';$('s-msg').textContent=err.message;$('s-go').disabled=false}});
+ if(location.hash==='#apuntarme')setTimeout(()=>$('apuntarme')?.scrollIntoView(),50);
+}
+
+/* ================= vista: ficha personal ================= */
+async function viewMe(tok){const v=$('view');
+ const d=await rpc('me',{p_token:tok});
+ if(!d){nav('');v.innerHTML=`<section class="card"><h2>Este enlace no funciona</h2><p class="sub">Puede que te hayan borrado de la lista o que el enlace esté mal copiado. Pídeselo a los gestores o vuelve a apuntarte.</p><a href="./">Ir al inicio</a></section>`;
+  if(store.get('nv_token')===tok)store.del('nv_token');const r=await rpc('public_info');paintInfo(r.event,r.money);return}
+ if(!store.get('nv_token'))store.set('nv_token',tok);
+ nav(store.get('nv_token')===tok?'me':'');paintInfo(d.event,d.money);
+ const g=d.guest,m=d.money,ev=d.event,link=personalLink(tok),isNew=new URLSearchParams(location.search).has('nuevo');
+ const owe=g.status==='no'?0:m.per_person;
+ v.innerHTML=`<div class="grid">
+  <section class="card" aria-labelledby="h-me">
+   <h2 id="h-me">Hola, ${esc(g.name)}</h2>
+   <p class="sub">${isNew?'¡Ya estás apuntado! ':''}Esta es tu ficha. Guarda el enlace para volver.</p>
+   ${g.status==='no'?`<p>Has marcado que no vienes. Si cambias de idea, actualízalo abajo.</p>`:`
+   <div class="due"><span class="sub" style="margin:0">Te toca poner</span><span class="big">${eur(owe)}</span>
+    <span>${g.paid?'<span class="pill paid">Pagado</span>':'<span class="pill unpaid">Pendiente de pago</span>'} ${g.status==='quiza'?'<span class="pill quiza">Vienes: quizá</span>':''}</span></div>
+   <p class="sub" style="margin:8px 0 0">${m.by_confirmed?`Total ${eur(m.total)} entre los ${m.people} confirmados. Puede cambiar si se apunta más gente.`:`Total ${eur(m.total)} calculado para ${m.people} personas.`}</p>
+   ${ev.pay_how||ev.pay_to?`<div class="callout"><b>Cómo pagar</b><br>${esc(ev.pay_how)}${ev.pay_to?`<br><span class="sub">Lo recoge: ${esc(ev.pay_to)}</span>`:''}</div>`:''}`}
+   <div class="callout"><b>Tu enlace personal</b><span class="sub" style="display:block;margin:2px 0 0">Con él entras a tu ficha desde cualquier móvil u ordenador. No lo compartas.</span>
+    <div class="linkbox"><input type="text" readonly value="${esc(link)}" aria-label="Tu enlace" id="me-link"><button class="btn2" type="button" id="me-copy">Copiar</button></div>
+    <p style="margin:10px 0 0"><a href="https://wa.me/?text=${encodeURIComponent('Mi enlace para la fiesta de Nochevieja: '+link)}" target="_blank" rel="noopener">Enviármelo por WhatsApp</a></p></div>
+  </section>
+  <section class="card" aria-labelledby="h-ed"><h2 id="h-ed">Tus datos</h2><p class="sub">Puedes cambiarlos cuando quieras.</p>
+   <form class="stack-form" id="me-form">
+    <label class="f">Nombre<input type="text" id="m-name" required maxlength="60" value="${esc(g.name)}"></label>
+    <label class="f">Teléfono<input type="tel" id="m-phone" maxlength="30" value="${esc(g.phone)}" inputmode="tel"></label>
+    <div class="f" style="display:grid;gap:4px;font-weight:600">¿Vienes?${segHtml(g.status)}</div>
+    <label class="f">¿Qué traes?<input type="text" id="m-brings" maxlength="120" value="${esc(g.brings)}" placeholder="Tu bebida, algo para compartir…"></label>
+    <button class="btn" type="submit" id="m-go">Guardar cambios</button>
+    <p class="msg" id="m-msg" aria-live="polite"></p>
+   </form>
+   <p class="sub" style="margin-top:14px">El pago lo marcan los gestores cuando les llega.</p>
+  </section></div>`;
+ bindSeg(v);
+ $('me-copy').addEventListener('click',e=>copy(link,e.target));
+ $('me-form').addEventListener('submit',async e=>{e.preventDefault();$('m-go').disabled=true;$('m-msg').className='msg';$('m-msg').textContent='Guardando…';
+  try{await rpc('update_me',{p_token:tok,p_name:$('m-name').value,p_phone:$('m-phone').value,p_status:segVal($('me-form')),p_brings:$('m-brings').value});
+   history.replaceState(null,'','?t='+encodeURIComponent(tok));await viewMe(tok);$('m-msg').className='msg ok';$('m-msg').textContent='Guardado.'}
+  catch(err){$('m-msg').className='msg err';$('m-msg').textContent=err.message;$('m-go').disabled=false}});
+}
+
+/* ================= vista: gestión ================= */
+let A=null,tab=sess.get('nv_tab')||'gente',filter='';
+const pin=()=>sess.get('nv_pin');
+async function viewAdmin(){nav('admin');const v=$('view');
+ if(!pin()){const d=await rpc('public_info');paintInfo(d.event,d.money);
+  const first=!d.event.has_pin;
+  v.innerHTML=`<section class="card" style="max-width:520px"><h2>${first?'Crear el PIN de gestores':'Zona de gestores'}</h2>
+   <p class="sub">${first?'Es la primera vez. Elige un PIN de al menos 6 caracteres y compártelo solo con los gestores.':'Introduce el PIN de gestores.'}</p>
+   <form class="stack-form" id="pinForm"><label class="f">PIN<input type="password" id="pin" required minlength="${first?6:1}" autocomplete="${first?'new-password':'current-password'}"></label>
+   ${first?'<label class="f">Repite el PIN<input type="password" id="pin2" required autocomplete="new-password"></label>':''}
+   <button class="btn" type="submit">${first?'Crear PIN y entrar':'Entrar'}</button><p class="msg" id="pinMsg" aria-live="polite"></p></form></section>`;
+  $('pinForm').addEventListener('submit',async e=>{e.preventDefault();const p=$('pin').value,msg=$('pinMsg');msg.className='msg';
+   try{if(first){if(p!==$('pin2').value)throw new Error('Los PIN no coinciden');await rpc('admin_setup_pin',{p_new:p})}
+    await rpc('admin_state',{p_pin:p});sess.set('nv_pin',p);viewAdmin()}catch(err){msg.className='msg err';msg.textContent=err.message}});
+  return}
+ try{A=await rpc('admin_state',{p_pin:pin()})}catch(err){sess.del('nv_pin');v.innerHTML=`<p class="msg err">${esc(err.message)}</p>`;setTimeout(viewAdmin,1500);return}
+ paintInfo(A.event,A.money);renderAdmin()}
+function renderAdmin(){const v=$('view'),m=A.money,G=A.guests;
+ const unpaid=G.filter(g=>g.status==='si'&&!g.paid).length;
+ v.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:16px"><h2 style="font-size:clamp(30px,4vw,44px)">Gestión de la fiesta</h2>
+  <div class="row"><button class="btn" type="button" id="invite">Copiar invitación</button><button class="btn2" type="button" id="sum">Copiar resumen</button><button class="ghost" type="button" id="out">Salir</button></div></div>
+ <div class="stats">
+  <div class="stat"><small>Total previsto</small><span class="big">${eur(m.total)}</span></div>
+  <div class="stat"><small>Cada uno pone</small><span class="big">${eur(m.per_person)}</span></div>
+  <div class="stat"><small>Confirmados</small><span class="big">${m.si}</span><small>${m.quiza} en duda</small></div>
+  <div class="stat"><small>Han pagado</small><span class="big">${m.paid} / ${m.si}</span><small>${unpaid} pendientes</small></div>
+  <div class="stat"><small>Recaudado</small><span class="big">${eur(m.collected)}</span><small>faltan ${eur(Math.max(0,m.total-m.collected))}</small></div>
+  <div class="stat"><small>Falta por comprar</small><span class="big">${eur(m.pending)}</span></div>
+ </div>
+ <div class="tabs" role="tablist">${[['gente','Gente'],['compra','Compra'],['datos','Datos de la fiesta']].map(([k,l])=>`<button type="button" role="tab" aria-selected="${tab===k}" class="${tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}</div>
+ <div id="pane"></div><p class="msg" id="aMsg" aria-live="polite"></p>`;
+ v.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;sess.set('nv_tab',tab);renderAdmin()});
+ $('out').addEventListener('click',()=>{sess.del('nv_pin');viewAdmin()});
+ $('invite').addEventListener('click',e=>copy(`🎆 ${A.event.event_name||'Nochevieja 2026'} 🎆\n31 de diciembre${A.event.place?' en '+A.event.place:''}${A.event.start_time?' a las '+A.event.start_time:''}.\nApúntate aquí y mira lo que te toca poner:\n${base}`,e.target));
+ $('sum').addEventListener('click',e=>copy(summary(),e.target));
+ ({gente:paneGente,compra:paneCompra,datos:paneDatos})[tab]()}
+function summary(){const m=A.money,ev=A.event,G=A.guests;
+ return [`🎆 ${ev.event_name||'Nochevieja 2026'} 🎆`,`📍 ${ev.place||'Local por confirmar'}${ev.addr?' · '+ev.addr:''}`,`🕙 31 dic a las ${ev.start_time||'22:00'}`,ev.notes?'ℹ️ '+ev.notes:'','',
+  `Total: ${eur(m.total)} → ${eur(m.per_person)} cada uno (${m.people} personas)`,`Confirmados: ${m.si}${m.quiza?' (+'+m.quiza+' en duda)':''} · Han pagado: ${m.paid}`,
+  ev.pay_how?'💸 '+ev.pay_how:'','',
+  'Quién trae qué:',...G.filter(g=>g.brings&&g.status!=='no').map(g=>`• ${g.name}: ${g.brings}`),'',`Apúntate o mira tu ficha: ${base}`].filter((l,i,a)=>!(l===''&&a[i-1]==='')).join('\n')}
+async function act(fn,args){const msg=$('aMsg');msg.className='msg';msg.textContent='Guardando…';
+ try{await rpc(fn,{p_pin:pin(),...args});A=await rpc('admin_state',{p_pin:pin()});paintInfo(A.event,A.money);renderAdmin();$('aMsg').className='msg ok';$('aMsg').textContent='Guardado.'}
+ catch(err){msg.className='msg err';msg.textContent=err.message}}
+function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone+' '+g.brings).toLowerCase().includes(filter.toLowerCase()));
+ $('pane').innerHTML=`<section class="card"><div class="row" style="justify-content:space-between"><h2>Gente (${A.guests.length})</h2>
+  <input type="search" id="q" placeholder="Buscar" value="${esc(filter)}" style="max-width:240px" aria-label="Buscar persona"></div>
+  <p class="sub">Los cambios se guardan al salir de cada campo. «Enlace» copia la ficha personal para mandársela a esa persona.</p>
+  <div class="scroll"><table class="stack"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Viene</th><th>Trae</th><th>Pagado</th><th>Enlace</th><th></th></tr></thead><tbody>
+  ${G.map(g=>`<tr data-id="${esc(g.id)}">
+   <td class="first"><input type="text" data-f="name" value="${esc(g.name)}" maxlength="60" aria-label="Nombre"></td>
+   <td data-l="Teléfono"><input type="tel" data-f="phone" value="${esc(g.phone)}" maxlength="30" aria-label="Teléfono" style="min-width:120px"></td>
+   <td data-l="Viene"><select data-f="status" aria-label="Viene">${Object.entries(STATUS).map(([k,l])=>`<option value="${k}"${g.status===k?' selected':''}>${l}</option>`).join('')}</select></td>
+   <td data-l="Trae"><input type="text" data-f="brings" value="${esc(g.brings)}" maxlength="120" aria-label="Qué trae" style="min-width:140px"></td>
+   <td data-l="Pagado"><label class="tick"><input type="checkbox" data-f="paid"${g.paid?' checked':''} aria-label="Ha pagado"></label></td>
+   <td data-l="Ficha"><button class="btn2" type="button" data-link="${esc(g.token)}" style="min-height:38px;padding:0 12px">Enlace</button></td>
+   <td class="del"><button class="ghost" type="button" data-del aria-label="Borrar a ${esc(g.name)}">✕</button></td></tr>`).join('')||'<tr><td colspan="7" class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</td></tr>'}
+  </tbody></table></div>
+  <form class="add" id="gAdd" autocomplete="off"><input type="text" id="g-name" placeholder="Nombre" required maxlength="60" aria-label="Nombre"><input type="tel" id="g-phone" placeholder="Teléfono" maxlength="30" aria-label="Teléfono"><input type="text" id="g-brings" placeholder="Qué trae" maxlength="120" aria-label="Qué trae"><button class="btn" type="submit">Añadir</button></form></section>`;
+ $('q').addEventListener('input',e=>{filter=e.target.value;const p=e.target.selectionStart;paneGente();const q=$('q');q.focus();q.setSelectionRange(p,p)});
+ const tb=$('pane').querySelector('tbody');
+ tb.addEventListener('change',e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const g=A.guests.find(x=>x.id===tr.dataset.id);
+  const val=f=>tr.querySelector(`[data-f="${f}"]`);
+  act('admin_guest_save',{p_id:g.id,p_name:val('name').value,p_phone:val('phone').value,p_status:val('status').value,p_brings:val('brings').value,p_paid:val('paid').checked})});
+ tb.addEventListener('click',e=>{const l=e.target.closest('[data-link]');if(l){copy(personalLink(l.dataset.link),l);return}
+  const d=e.target.closest('[data-del]');if(d){const tr=d.closest('tr');const g=A.guests.find(x=>x.id===tr.dataset.id);
+   if(d.dataset.sure){act('admin_guest_delete',{p_id:g.id})}else{d.dataset.sure=1;d.textContent='¿Borrar?';d.style.color='var(--red)';setTimeout(()=>{if(d.isConnected){delete d.dataset.sure;d.textContent='✕';d.style.color=''}},3000)}}});
+ $('gAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_guest_save',{p_id:null,p_name:$('g-name').value,p_phone:$('g-phone').value,p_status:'si',p_brings:$('g-brings').value,p_paid:false})});
+}
+function paneCompra(){const I=A.items;
+ $('pane').innerHTML=`<section class="card"><h2>Lista de la compra</h2><p class="sub">Marca «Extra» para lo que solo se compra si sobra dinero: no cuenta en el total.</p>
+  <div class="scroll"><table class="stack"><thead><tr><th>Qué</th><th>Tipo</th><th class="num">Cant.</th><th class="num">€/ud</th><th>Quién</th><th class="num">Total</th><th>Comprado</th><th>Extra</th><th></th></tr></thead><tbody>
+  ${I.map(i=>`<tr data-id="${esc(i.id)}">
+   <td class="first"><input type="text" data-f="name" value="${esc(i.name)}" maxlength="120" aria-label="Qué" style="min-width:180px"></td>
+   <td data-l="Tipo"><select data-f="cat" aria-label="Tipo">${CATS.map(c=>`<option${c===i.cat?' selected':''}>${c}</option>`).join('')}</select></td>
+   <td data-l="Cantidad" class="num"><input type="number" data-f="q" value="${esc(num(i.q))}" min="0" step="1" style="width:76px" aria-label="Cantidad"></td>
+   <td data-l="€ por unidad" class="num"><input type="number" data-f="p" value="${esc(num(i.p))}" min="0" step="0.05" style="width:92px" aria-label="Precio"></td>
+   <td data-l="Quién"><input type="text" data-f="who" value="${esc(i.who)}" maxlength="40" aria-label="Quién lo compra" style="min-width:90px"></td>
+   <td data-l="Total" class="num"><b>${eur(num(i.q)*num(i.p))}</b></td>
+   <td data-l="Comprado"><label class="tick"><input type="checkbox" data-f="done"${i.done?' checked':''} aria-label="Comprado"></label></td>
+   <td data-l="Extra"><label class="tick"><input type="checkbox" data-f="opt"${i.opt?' checked':''} aria-label="Solo si sobra dinero"></label></td>
+   <td class="del"><button class="ghost" type="button" data-del aria-label="Borrar ${esc(i.name)}">✕</button></td></tr>`).join('')||'<tr><td colspan="9" class="msg">La lista está vacía.</td></tr>'}
+  </tbody></table></div>
+  <form class="add items" id="iAdd" autocomplete="off"><input type="text" id="i-name" placeholder="Añadir cosa" required maxlength="120" aria-label="Qué">
+   <select id="i-cat" aria-label="Tipo">${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
+   <input type="number" id="i-q" value="1" min="0" step="1" aria-label="Cantidad"><input type="number" id="i-p" value="0" min="0" step="0.05" aria-label="Precio por unidad"><button class="btn" type="submit">Añadir</button></form>
+  <p class="sub" style="margin-top:12px">Precios orientativos salvo el local (500 €). Total: <b>${eur(A.money.total)}</b>${A.money.extra?` · Extras: ${eur(A.money.extra)} (+${eur(A.money.extra_per_person)}/persona)`:''}</p></section>`;
+ const tb=$('pane').querySelector('tbody');
+ tb.addEventListener('change',e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const val=f=>tr.querySelector(`[data-f="${f}"]`);
+  act('admin_item_save',{p_id:tr.dataset.id,p_name:val('name').value,p_cat:val('cat').value,p_q:num(val('q').value),p_p:num(val('p').value),p_who:val('who').value,p_done:val('done').checked,p_opt:val('opt').checked})});
+ tb.addEventListener('click',e=>{const d=e.target.closest('[data-del]');if(!d)return;const id=d.closest('tr').dataset.id;
+  if(d.dataset.sure)act('admin_item_delete',{p_id:id});else{d.dataset.sure=1;d.textContent='¿Borrar?';d.style.color='var(--red)';setTimeout(()=>{if(d.isConnected){delete d.dataset.sure;d.textContent='✕';d.style.color=''}},3000)}});
+ $('iAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_item_save',{p_id:null,p_name:$('i-name').value,p_cat:$('i-cat').value,p_q:num($('i-q').value),p_p:num($('i-p').value),p_who:'',p_done:false,p_opt:false})});
+}
+function paneDatos(){const ev=A.event,fixed=ev.people_override!=null;
+ $('pane').innerHTML=`<div class="grid"><section class="card"><h2>Datos de la fiesta</h2><p class="sub">Esto es lo que ve todo el mundo arriba de la página.</p>
+  <form class="stack-form" id="sForm">
+   <label class="f">Nombre de la fiesta<input type="text" id="e-name" maxlength="60" value="${esc(ev.event_name)}"></label>
+   <div class="two"><label class="f">Hora de llegada<input type="time" id="e-start" value="${esc(ev.start_time)}"></label><label class="f">Hasta<input type="text" id="e-end" maxlength="40" value="${esc(ev.end_time)}" placeholder="p. ej. 06:00"></label></div>
+   <label class="f">Nombre del local<input type="text" id="e-place" maxlength="80" value="${esc(ev.place)}"></label>
+   <label class="f">Dirección<input type="text" id="e-addr" maxlength="160" value="${esc(ev.addr)}"></label>
+   <label class="f">Quién recoge el dinero<input type="text" id="e-payto" maxlength="80" value="${esc(ev.pay_to)}"></label>
+   <label class="f">Cómo pagar <small>p. ej. Bizum al 600… con el concepto «Nochevieja + nombre»</small><textarea id="e-payhow" maxlength="200">${esc(ev.pay_how)}</textarea></label>
+   <label class="f">Nota para todos<textarea id="e-notes" maxlength="400">${esc(ev.notes)}</textarea></label>
+   <fieldset style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><legend style="font-weight:600;padding:0 6px">Repartir el gasto</legend>
+    <label class="row"><input type="radio" name="div" value="conf"${fixed?'':' checked'}> Entre los confirmados (${A.money.si})</label>
+    <label class="row" style="margin-top:8px"><input type="radio" name="div" value="fixed"${fixed?' checked':''}> Entre un número fijo: <input type="number" id="e-people" min="1" max="500" value="${esc(ev.people_override??35)}" style="width:96px" aria-label="Número de personas"></label></fieldset>
+   <button class="btn" type="submit">Guardar datos</button></form></section>
+  <section class="card"><h2>PIN de gestores</h2><p class="sub">Cambia el PIN si alguien que no debería lo conoce. Los demás gestores tendrán que usar el nuevo.</p>
+   <form class="stack-form" id="pForm"><label class="f">PIN nuevo<input type="password" id="p-new" minlength="6" required autocomplete="new-password"></label>
+   <label class="f">Repítelo<input type="password" id="p-new2" minlength="6" required autocomplete="new-password"></label><button class="btn2" type="submit">Cambiar PIN</button><p class="msg" id="pMsg"></p></form></section></div>`;
+ $('sForm').addEventListener('submit',e=>{e.preventDefault();const f=document.querySelector('input[name=div]:checked').value==='fixed';
+  act('admin_settings_save',{p:{event_name:$('e-name').value,start_time:$('e-start').value,end_time:$('e-end').value,place:$('e-place').value,addr:$('e-addr').value,pay_to:$('e-payto').value,pay_how:$('e-payhow').value,notes:$('e-notes').value,people_override:f?String(Math.max(1,Math.round(num($('e-people').value))||1)):''}})});
+ $('pForm').addEventListener('submit',async e=>{e.preventDefault();const n=$('p-new').value,msg=$('pMsg');
+  if(n!==$('p-new2').value){msg.className='msg err';msg.textContent='Los PIN no coinciden';return}
+  try{await rpc('admin_change_pin',{p_pin:pin(),p_new:n});sess.set('nv_pin',n);msg.className='msg ok';msg.textContent='PIN cambiado.';e.target.reset()}catch(err){msg.className='msg err';msg.textContent=err.message}});
+}
+
+/* ================= arranque ================= */
+async function route(){const tok=new URLSearchParams(location.search).get('t');
+ try{if(location.hash==='#gestion')await viewAdmin();else if(tok)await viewMe(tok);else await viewHome()}
+ catch(err){$('view').innerHTML=`<section class="card"><h2>No se ha podido cargar</h2><p class="sub">${esc(err.message)}</p><button class="btn" type="button" onclick="location.reload()">Reintentar</button></section>`}}
+if(DEMO)$('demo').classList.remove('hidden');
+window.addEventListener('hashchange',()=>{if(location.hash==='#gestion'||location.hash==='')route()});
+route();
+}
+</script>
+</body>
+</html>
