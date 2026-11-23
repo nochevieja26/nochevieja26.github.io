@@ -21,7 +21,7 @@
 :root[data-theme=dark],:root[data-theme=light]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 html{scroll-padding-top:16px}
-body{margin:0;background:radial-gradient(1px 1px at 12% 18%,#ffffff55 50%,transparent 51%) 0 0/220px 260px,radial-gradient(1.5px 1.5px at 70% 60%,#ffffff40 50%,transparent 51%) 0 0/300px 340px,linear-gradient(180deg,#2a0a22 0,var(--paper) 900px);background-color:var(--paper);color:var(--ink);font:16px/1.55 Figtree,system-ui,sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
+body{margin:0;background:radial-gradient(1px 1px at 12% 18%,#ffffff55 50%,transparent 51%) 0 0/220px 260px,radial-gradient(1.5px 1.5px at 70% 60%,#ffffff40 50%,transparent 51%) 0 0/300px 340px,var(--paper);color:var(--ink);font:16px/1.55 Figtree,system-ui,sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
 h1,h2,h3,.big{font-family:Unbounded,Figtree,system-ui,sans-serif;font-weight:700;line-height:1.05;margin:0;text-wrap:balance;letter-spacing:-.02em}
 a{color:var(--gold);text-underline-offset:3px}
 .hidden{display:none!important}
@@ -29,7 +29,7 @@ a{color:var(--gold);text-underline-offset:3px}
 .narrow{width:min(100% - 32px,640px);margin-inline:auto}
 
 /* ---------- cielo ---------- */
-.sky{position:relative;overflow:hidden;color:#fff7ea;background:radial-gradient(120% 90% at 70% 0%,#5a1540 0%,#2a0a22 70%);padding:18px 0 120px}
+.sky{position:relative;overflow:hidden;color:#fff7ea;background:linear-gradient(180deg,transparent 55%,var(--paper) 100%),radial-gradient(120% 90% at 70% 0%,#5a1540 0%,#2a0a22 70%);padding:18px 0 120px}
 .sky canvas{position:absolute;inset:0;width:100%;height:100%}
 .sky .wrap{position:relative}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
@@ -102,6 +102,9 @@ label.f small,.f small{color:var(--mute);font-weight:500;font-size:14px}
 .ticket .body::before{left:-13px;box-shadow:calc(100% * 0) 0 0 0 var(--paper)}
 .ticket .body::after{content:"";position:absolute;width:26px;height:26px;border-radius:50%;background:var(--paper);top:-13px;right:-13px}
 .ticket .stub::before{display:none}
+.ticket.solo .stub{border-radius:24px}
+.ticket.solo .stub::after{display:none}
+.ticket.solo{margin-bottom:22px}
 @media(min-width:640px){.ticket .stub,.ticket .body{padding-left:34px;padding-right:34px}}
 .tabs2{display:flex;gap:6px;background:#00000022;padding:5px;border-radius:99px;width:max-content;max-width:100%}
 .tabs2 button{min-height:44px;padding:0 18px;border-radius:99px;border:0;background:transparent;color:#fff;font-weight:800;font-size:16px}
@@ -299,7 +302,8 @@ function paintInfo(ev,money){const name=ev.event_name||'Nochevieja 2026',parts=n
 }
 // Prepara la página: 'ticket' (inicio y ficha) o 'wide' (gestión y recaudador)
 function layout(mode,title,sub){$('factsWrap').classList.toggle('hidden',mode!=='ticket');$('below').innerHTML='';$('below').className=mode==='wide'?'wrap':'narrow';
- if(mode==='wide'){$('view').innerHTML=`<div class="ticket"><div class="stub" style="border-radius:24px"><h2 style="margin:0">${esc(title)}</h2>${sub?`<p>${sub}</p>`:''}</div></div>`;return $('below')}
+ $('view').className=mode==='wide'?'wrap':'narrow';
+ if(mode==='wide'){$('view').innerHTML=`<div class="ticket solo"><div class="stub"><h2 style="margin:0">${esc(title)}</h2>${sub?`<p>${sub}</p>`:''}</div></div>`;return $('below')}
  return $('view')}
 function nav(active){const tok=store.get('nv_token');
  $('nav').innerHTML=[['./','Inicio','home'],tok?['?t='+encodeURIComponent(tok),'Mi entrada','me']:['./#entrar','Entrar','home2'],['#gestion','Gestión','admin']]
@@ -489,11 +493,11 @@ const pin=()=>sess.get('nv_pin');
 async function viewAdmin(){nav('admin');const v=layout('wide','Gestión de la fiesta','Solo para quienes organizan.');
  if(!pin()){const d=await rpc('public_info');paintInfo(d.event,d.money);
   const first=!d.event.has_pin;
-  v.innerHTML=`<section class="card" style="max-width:520px"><h2>${first?'Crear el PIN de gestores':'Zona de gestores'}</h2>
-   <p class="sub">${first?'Es la primera vez. Elige un PIN de al menos 6 caracteres y compártelo solo con los gestores.':'Introduce el PIN de gestores.'}</p>
+  $('view').className='narrow';$('view').innerHTML=`<div class="ticket"><div class="stub"><h2 style="margin:0">${first?'Crea el PIN de gestores':'Gestión de la fiesta'}</h2>
+   <p>${first?'Es la primera vez. Elige un PIN de al menos 6 caracteres y compártelo solo con quienes organizáis.':'Entra con el PIN que compartís quienes organizáis.'}</p></div><div class="body">
    <form class="stack-form" id="pinForm"><label class="f">PIN<input type="password" id="pin" required minlength="${first?6:1}" autocomplete="${first?'new-password':'current-password'}"></label>
    ${first?'<label class="f">Repite el PIN<input type="password" id="pin2" required autocomplete="new-password"></label>':''}
-   <button class="btn" type="submit">${first?'Crear PIN y entrar':'Entrar'}</button><p class="msg" id="pinMsg" aria-live="polite"></p></form></section>`;
+   <button class="btn wide" type="submit">${first?'Crear PIN y entrar':'Entrar'}</button><p class="msg" id="pinMsg" aria-live="polite"></p></form></div></div>`;
   $('pinForm').addEventListener('submit',async e=>{e.preventDefault();const p=$('pin').value,msg=$('pinMsg');msg.className='msg';
    try{if(first){if(p!==$('pin2').value)throw new Error('Los PIN no coinciden');await rpc('admin_setup_pin',{p_new:p})}
     await rpc('admin_state',{p_pin:p});sess.set('nv_pin',p);viewAdmin()}catch(err){msg.className='msg err';msg.textContent=err.message}});
