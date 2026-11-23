@@ -50,6 +50,15 @@ create table if not exists public.guests (
   created_at timestamptz not null default now()
 );
 alter table public.guests add column if not exists pay_method text not null default 'bizum';
+-- Teléfono normalizado (solo cifras, sin prefijo +34) para no apuntar dos veces a la misma persona
+alter table public.guests add column if not exists phone_key text generated always as (
+  case when regexp_replace(phone,'\D','','g') ~ '^(0034|34)[0-9]{9}$' then right(regexp_replace(phone,'\D','','g'),9)
+       else regexp_replace(phone,'\D','','g') end) stored;
+do $$ begin
+  create unique index if not exists guests_phone_key_uq on public.guests (phone_key) where phone_key <> '';
+exception when unique_violation then
+  raise notice 'Hay teléfonos repetidos en la lista: arréglalos en la gestión y vuelve a ejecutar este script.';
+end $$;
 alter table public.guests add column if not exists collector_id uuid references public.collectors(id) on delete set null;
 do $$ begin
   alter table public.guests add constraint guests_pay_method_chk check (pay_method in ('bizum','efectivo'));
@@ -77,6 +86,9 @@ select * from (values
 ) v(name,cat,q,p,ord,opt)
 where not exists (select 1 from public.items);
 
+alter table public.settings add column if not exists whatsapp_url text not null default '';
+alter table public.settings add column if not exists admin_contact text not null default '';
+
 alter table public.settings   enable row level security;
 alter table public.collectors enable row level security;
 alter table public.guests     enable row level security;
@@ -90,6 +102,21 @@ drop function if exists public.update_me(uuid,text,text,text,text);
 drop function if exists public.admin_guest_save(text,uuid,text,text,text,text,boolean);
 
 -- ---------- cálculos ----------
+create or replace function public._phone_key(p text)
+returns text language sql immutable as $$
+  select case when regexp_replace(coalesce(p,''),'\D','','g') ~ '^(0034|34)[0-9]{9}$' then right(regexp_replace(p,'\D','','g'),9)
+              else regexp_replace(coalesce(p,''),'\D','','g') end;
+$$;
+
+-- Devuelve el nombre de quien ya tiene ese teléfono (o null). p_except: no contar a esta persona
+create or replace function public._phone_owner(p_phone text, p_except uuid)
+returns text language sql stable security definer set search_path = public as $$
+  select name from guests
+  where public._phone_key(p_phone) <> '' and phone_key = public._phone_key(p_phone)
+    and id is distinct from p_except
+  limit 1;
+$$;
+
 create or replace function public._money()
 returns json language sql stable security definer set search_path = public as $$
   with t as (
@@ -120,6 +147,7 @@ returns json language sql stable security definer set search_path = public as $$
   select json_build_object('event_name',event_name,'place',place,'addr',addr,
     'start_time',start_time,'end_time',end_time,'pay_how',pay_how,
     'notes',notes,'people_override',people_override,'has_pin',admin_pin_hash is not null,
+    'admin_contact',admin_contact,
     'collectors',(select count(*) from collectors where active))
   from settings where id = 1;
 $$;
@@ -175,8 +203,14 @@ returns uuid language plpgsql volatile security definer set search_path = public
 declare t uuid; st text := case when p_status in ('si','quiza','no') then p_status else 'si' end;
 begin
   if char_length(trim(coalesce(p_name,''))) = 0 then raise exception 'Falta el nombre'; end if;
+  if char_length(public._phone_key(p_phone)) < 9 then
+    raise exception 'Pon un teléfono válido. Si no quieres darlo, habla con un gestor y te apunta él.';
+  end if;
   if (select count(*) from guests) >= 300 then raise exception 'La lista está llena'; end if;
   perform pg_advisory_xact_lock(2026);
+  if public._phone_owner(p_phone, null) is not null then
+    raise exception 'Ese teléfono ya está apuntado. Si es el tuyo y has perdido tu enlace, pídeselo a un gestor.';
+  end if;
   insert into guests (name, phone, status, brings, pay_method, collector_id)
   values (left(trim(p_name),60), left(trim(coalesce(p_phone,'')),30), st,
           left(trim(coalesce(p_brings,'')),120),
@@ -191,15 +225,23 @@ create or replace function public.me(p_token uuid)
 returns json language sql stable security definer set search_path = public as $$
   select json_build_object('guest', json_build_object('name',name,'phone',phone,'status',status,'brings',brings,'paid',paid,'pay_method',pay_method),
                            'collector', public._collector_json(collector_id),
+                           'whatsapp_url', (select whatsapp_url from settings where id = 1),
                            'event', public._event(), 'money', public._money())
   from guests where token = p_token;
 $$;
 
 create or replace function public.update_me(p_token uuid, p_name text, p_phone text, p_status text, p_brings text, p_pay text)
 returns void language plpgsql volatile security definer set search_path = public as $$
-declare gid uuid;
+declare gid uuid; cur uuid := (select id from guests where token = p_token);
 begin
+  if cur is null then raise exception 'Enlace no válido'; end if;
   if char_length(trim(coalesce(p_name,''))) = 0 then raise exception 'Falta el nombre'; end if;
+  if char_length(public._phone_key(p_phone)) < 9 then
+    raise exception 'Pon un teléfono válido. Si no quieres darlo, habla con un gestor.';
+  end if;
+  if public._phone_owner(p_phone, cur) is not null then
+    raise exception 'Ese teléfono ya lo tiene otra persona de la lista. Habla con un gestor.';
+  end if;
   update guests set name = left(trim(p_name),60), phone = left(trim(coalesce(p_phone,'')),30),
     status = case when p_status in ('si','quiza','no') then p_status else status end,
     brings = left(trim(coalesce(p_brings,'')),120),
@@ -258,6 +300,7 @@ begin
   pp := (public._money()->>'per_person')::numeric;
   return json_build_object(
     'event', public._event(), 'money', public._money(),
+    'whatsapp_url', (select whatsapp_url from settings where id = 1),
     'collectors', coalesce((select json_agg(x order by x.created_at) from (
        select c.id, c.name, c.phone, c.active, c.created_at,
               count(g.id) filter (where g.status <> 'no') assigned,
@@ -273,10 +316,12 @@ end $$;
 
 create or replace function public.admin_guest_save(p_pin text, p_id uuid, p_name text, p_phone text, p_status text, p_brings text, p_paid boolean, p_pay text, p_collector uuid)
 returns json language plpgsql volatile security definer set search_path = public as $$
-declare e text := public._pin_error(p_pin); r uuid;
+declare e text := public._pin_error(p_pin); r uuid; dup text;
 begin
   if e is not null then return json_build_object('error', e); end if;
   if char_length(trim(coalesce(p_name,''))) = 0 then return json_build_object('error','Falta el nombre'); end if;
+  dup := public._phone_owner(p_phone, p_id);
+  if dup is not null then return json_build_object('error','Ese teléfono ya lo tiene ' || dup); end if;
   if p_id is null then
     insert into guests (name, phone, status, brings, paid, pay_method, collector_id)
     values (left(trim(p_name),60), left(trim(coalesce(p_phone,'')),30),
@@ -385,6 +430,9 @@ returns json language plpgsql volatile security definer set search_path = public
 declare e text := public._pin_error(p_pin);
 begin
   if e is not null then return json_build_object('error', e); end if;
+  if coalesce(trim(p->>'whatsapp_url'),'') <> '' and split_part(trim(p->>'whatsapp_url'),'?',1) !~ '^https://chat\.whatsapp\.com/[A-Za-z0-9]+$' then
+    return json_build_object('error','El enlace del grupo debe ser una invitación de WhatsApp: https://chat.whatsapp.com/…');
+  end if;
   update settings set
     event_name = left(coalesce(p->>'event_name', event_name),60),
     place      = left(coalesce(p->>'place', place),80),
@@ -393,6 +441,10 @@ begin
     end_time   = left(coalesce(p->>'end_time', end_time),40),
     pay_how    = left(coalesce(p->>'pay_how', pay_how),200),
     notes      = left(coalesce(p->>'notes', notes),400),
+    admin_contact = left(coalesce(p->>'admin_contact', admin_contact),120),
+    whatsapp_url  = case when p ? 'whatsapp_url' then
+                      split_part(trim(p->>'whatsapp_url'),'?',1)
+                    else whatsapp_url end,
     people_override = case when p ? 'people_override' then nullif(p->>'people_override','')::int else people_override end
   where id = 1;
   return json_build_object('ok', true);
