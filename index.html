@@ -111,6 +111,7 @@ label.f small,.f small{color:var(--mute);font-weight:500;font-size:14px}
 .tabs2 button.on{background:#fff;color:var(--red2)}
 .stub h2{font-size:clamp(24px,5.4vw,34px);margin-top:16px}
 .stub p{margin:6px 0 0;color:#ffe2e2;font-weight:500}
+.stub .tabs2+p{margin-top:14px}
 .stamp{display:inline-block;transform:rotate(-8deg);margin:10px 0 10px 4px;border:4px solid #fff;color:#fff;border-radius:12px;padding:4px 14px;font:800 18px Unbounded,sans-serif;letter-spacing:.02em;opacity:.95}
 .stamp.paid{border-color:var(--gold);color:var(--gold)}
 
@@ -200,6 +201,27 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
  .stack td.del{grid-column:2;grid-row:1}
  .stack td input,.stack td select{max-width:65%}
  .stack td.first{display:block}.stack td.first input{max-width:none}
+}
+@media(max-width:560px){
+ .brand{display:none}
+ .top{justify-content:center}
+ .nav a{padding:8px 12px}
+ .sky{padding:10px 0 92px}
+ .hero{padding-top:18px}
+ .when{margin-top:10px;font-size:16px}
+ .count{margin-top:14px;gap:8px}
+ .count div{width:72px;padding:8px 0 6px;border-radius:14px}
+ .ticket .body::before,.ticket .body::after{display:none}
+ .ticket .stub{padding:14px 16px 20px}
+ .ticket .body{padding:22px 18px}
+ .ticket .stub::after{left:0;right:0}
+ .tabs2{width:100%}
+ .tabs2 button{flex:1;padding:0 8px;font-size:15px}
+ .stub h2{margin-top:14px}
+ .facts{gap:10px}
+ .fact{padding:12px 14px}
+ .card{border-radius:18px}
+ .note{font-size:14px}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -347,10 +369,10 @@ async function viewHome(){nav('home');const v=layout('ticket');
  const draw=()=>{
   const stubUp=!ev.signups_open?`<h2>Inscripciones cerradas</h2><p>El plazo terminó${ev.signup_deadline?' el '+fdate(ev.signup_deadline):''}. Si aún quieres venir, habla con ${contact}.</p>`
    :tok?`<h2>Ya estás dentro</h2><p>Abajo puedes apuntar a otra persona desde este móvil.</p>`
-   :`<h2>Me apunto</h2><p>Un minuto y estás dentro.${ev.signup_deadline?` Hasta el ${fdate(ev.signup_deadline)}.`:''}${m.capacity!=null?(full?' Aforo completo: entrarás en lista de espera.':` Quedan ${m.spots_left} plazas.`):''}</p>`;
+   :`<p>Un minuto y estás dentro.${ev.signup_deadline?` Hasta el ${fdate(ev.signup_deadline)}.`:''}${m.capacity!=null?(full?' Aforo completo: entrarás en lista de espera.':` Quedan ${m.spots_left} plazas.`):''}</p>`;
   v.innerHTML=`<div class="ticket" id="apuntarme">
    <div class="stub"><div class="tabs2" role="tablist"><button type="button" role="tab" data-pane="up" class="${pane==='up'?'on':''}" aria-selected="${pane==='up'}">Me apunto</button><button type="button" role="tab" data-pane="in" class="${pane==='in'?'on':''}" aria-selected="${pane==='in'}">Ya estoy dentro</button></div>
-    ${pane==='up'?stubUp:`<h2>Mi entrada</h2><p>Entra con tu teléfono y tu PIN.</p>`}</div>
+    ${pane==='up'?stubUp:`<p>Entra con tu teléfono y tu PIN para ver tu entrada.</p>`}</div>
    <div class="body" id="entrar">
    ${pane==='in'?`<form class="stack-form" id="login" autocomplete="on">
      <label class="f">Teléfono<input type="tel" id="l-phone" required maxlength="30" inputmode="tel" autocomplete="tel" placeholder="600 000 000"></label>
