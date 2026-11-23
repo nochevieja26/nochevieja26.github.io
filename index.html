@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nochevieja 2026</title>
 <meta name="description" content="Apúntate a la fiesta de Nochevieja 2026">
-<meta name="theme-color" content="#2a0a1e">
+<meta name="theme-color" content="#1d0618">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23e5242f'/%3E%3Cg stroke='%23ffd24d' stroke-width='5' stroke-linecap='round'%3E%3Cpath d='M32 12v10M32 42v10M12 32h10M42 32h10M18 18l7 7M39 39l7 7M46 18l-7 7M25 39l-7 7'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,20 +16,20 @@
    TYPE     Bagel Fat One (títulos y cifras, gordita y festiva) + Figtree (texto)
    LAYOUT   columna central estrecha (cabe en un móvil); la entrada se monta sobre el borde del cielo
    MEMORABLE los fuegos de verdad + la entrada troquelada con el sello de "Pagado" */
-:root{color-scheme:light;--night:#2a0a1e;--night2:#4a1233;--paper:#fff7ea;--card:#ffffff;--ink:#2a0a1e;--mute:#7d5d6c;--line:#efdcc7;
- --red:#e5242f;--red2:#c51b25;--gold:#ffc93a;--grape:#5fae1e;--grape-bg:#e9f6d9;--gold-bg:#fff1c7;--red-bg:#fde3e3}
-:root[data-theme=dark],:root[data-theme=light]{color-scheme:light}
+:root{color-scheme:dark;--night:#1d0618;--night2:#3a0f2c;--paper:#1d0618;--card:#2b0b24;--card2:#3a1231;--ink:#fff3e6;--mute:#cfaabd;--line:#4d1d40;
+ --red:#e5242f;--red2:#ff5a63;--gold:#ffc93a;--grape:#5fae1e;--grape-bg:#2f4a17;--gold-bg:#4a3a10;--red-bg:#4f1420}
+:root[data-theme=dark],:root[data-theme=light]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 html{scroll-padding-top:16px}
-body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 Figtree,system-ui,sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
+body{margin:0;background:radial-gradient(1px 1px at 12% 18%,#ffffff55 50%,transparent 51%) 0 0/220px 260px,radial-gradient(1.5px 1.5px at 70% 60%,#ffffff40 50%,transparent 51%) 0 0/300px 340px,linear-gradient(180deg,#2a0a22 0,var(--paper) 900px);background-color:var(--paper);color:var(--ink);font:16px/1.55 Figtree,system-ui,sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
 h1,h2,h3,.big{font-family:"Bagel Fat One",Figtree,system-ui,sans-serif;font-weight:400;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:.005em}
-a{color:var(--red2);text-underline-offset:3px}
+a{color:var(--gold);text-underline-offset:3px}
 .hidden{display:none!important}
 .wrap{width:min(100% - 32px,1080px);margin-inline:auto}
 .narrow{width:min(100% - 32px,640px);margin-inline:auto}
 
 /* ---------- cielo ---------- */
-.sky{position:relative;overflow:hidden;color:#fff7ea;background:radial-gradient(120% 90% at 70% 0%,#5a1540 0%,var(--night) 62%);padding:18px 0 120px}
+.sky{position:relative;overflow:hidden;color:#fff7ea;background:radial-gradient(120% 90% at 70% 0%,#5a1540 0%,#2a0a22 70%);padding:18px 0 120px}
 .sky canvas{position:absolute;inset:0;width:100%;height:100%}
 .sky .wrap{position:relative}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
@@ -55,7 +55,7 @@ button{cursor:pointer}
 .btn{background:var(--red);color:#fff;box-shadow:0 4px 0 var(--red2)}
 .btn:hover:not(:disabled){background:#f2333d}
 .btn:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--red2)}
-.btn2{background:transparent;color:var(--ink);border:2px solid var(--ink)}
+.btn2{background:transparent;color:var(--ink);border:2px solid #ffffff55}
 .btn2:hover:not(:disabled){background:var(--ink);color:var(--paper)}
 .sky .btn2{color:#fff7ea;border-color:#fff7ea}
 .sky .btn2:hover{background:#fff7ea;color:var(--night)}
@@ -67,11 +67,11 @@ button{cursor:pointer}
 .wide{width:100%}
 button:disabled{opacity:.55;cursor:default}
 .ghost{background:none;border:0;color:var(--mute);font-weight:600;padding:0 6px;min-height:40px;border-radius:10px;text-decoration:underline;text-underline-offset:3px}
-.ghost:hover{color:var(--red2)}
-input[type=text],input[type=tel],input[type=number],input[type=password],input[type=time],input[type=search],input[type=url],input[type=date],select,textarea{width:100%;min-height:52px;padding:12px 14px;border:2px solid var(--line);border-radius:14px;background:#fff;color:var(--ink)}
+.ghost:hover{color:var(--gold)}
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=time],input[type=search],input[type=url],input[type=date],select,textarea{width:100%;min-height:52px;padding:12px 14px;border:2px solid var(--line);border-radius:14px;background:var(--card2);color:var(--ink)}
 textarea{min-height:86px;resize:vertical}
-input::placeholder,textarea::placeholder{color:#b49aa6}
-input:focus,select:focus,textarea:focus{border-color:var(--ink);outline:none}
+input::placeholder,textarea::placeholder{color:#9a7489}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none}
 :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 input[type=checkbox],input[type=radio]{width:22px;height:22px;accent-color:var(--grape)}
 .pinbox{max-width:180px;letter-spacing:.5em;font-size:22px!important;text-align:center}
@@ -81,20 +81,20 @@ label.f small,.f small{color:var(--mute);font-weight:500;font-size:14px}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media(max-width:560px){.two{grid-template-columns:1fr}}
 .seg{display:flex;flex-wrap:wrap;gap:8px}
-.seg button{min-height:46px;padding:0 18px;border-radius:99px;border:2px solid var(--line);background:#fff;font-weight:700;color:var(--mute)}
+.seg button{min-height:46px;padding:0 18px;border-radius:99px;border:2px solid var(--line);background:var(--card2);font-weight:700;color:var(--mute)}
 .seg button:hover{border-color:var(--ink);color:var(--ink)}
 .seg button.on{border-color:var(--ink);background:var(--ink);color:var(--paper)}
 .seg button.on[data-s=si],.seg button.on[data-p=bizum]{background:var(--grape);border-color:var(--grape);color:#fff}
 .msg{font-size:15px;color:var(--mute);min-height:1.4em;margin:0}
 .msg.err{color:var(--red2);font-weight:600}
-.msg.ok{color:#3f7a10;font-weight:600}
+.msg.ok{color:#9be05a;font-weight:600}
 .warn{color:var(--red2);font-size:14px;margin:4px 0 0;font-weight:500}
 .sub{color:var(--mute);margin:0 0 14px;font-size:15px}
 .pill{display:inline-block;font-size:14px;font-weight:700;padding:4px 12px;border-radius:99px;max-width:100%}
-.pill.paid,.pill.si{background:var(--grape-bg);color:#2f6a06}.pill.quiza{background:var(--gold-bg);color:#7a5600}.pill.unpaid{background:var(--red-bg);color:var(--red2)}.pill.no{background:#eee;color:#555}
+.pill.paid,.pill.si{background:var(--grape-bg);color:#b9f07f}.pill.quiza{background:var(--gold-bg);color:#ffd96a}.pill.unpaid{background:var(--red-bg);color:var(--red2)}.pill.no{background:#eee;color:#555}
 
 /* ---------- la entrada (tarjeta troquelada) ---------- */
-.ticket{position:relative;background:var(--card);border-radius:24px;box-shadow:0 18px 40px -18px #2a0a1e55;margin-top:-84px}
+.ticket{position:relative;background:var(--card);border-radius:24px;box-shadow:0 24px 60px -20px #000000aa,0 0 0 1px #ffffff12;margin-top:-84px}
 .ticket .stub{background:var(--red);color:#fff;border-radius:24px 24px 0 0;padding:20px 24px 26px;position:relative}
 .ticket .stub::after{content:"";position:absolute;left:18px;right:18px;bottom:-1px;border-bottom:3px dashed #ffffff;opacity:.9}
 .ticket .stub::before,.ticket .body::before{content:"";position:absolute;width:26px;height:26px;border-radius:50%;background:var(--paper);top:-13px}
@@ -114,9 +114,10 @@ label.f small,.f small{color:var(--mute);font-weight:500;font-size:14px}
 /* ---------- datos clave ---------- */
 .facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 0}
 .fact{background:var(--card);border-radius:18px;padding:14px 16px;border:2px solid var(--line)}
+.fact.money .v{color:var(--night)}
 .fact .k{display:block;font-size:14px;color:var(--mute);font-weight:600}
 .fact .v{display:block;font:400 clamp(20px,3.4vw,26px)/1.1 "Bagel Fat One",sans-serif;overflow-wrap:anywhere;margin-top:2px}
-.fact a{font-size:14px;font-weight:700}
+.fact a{font-size:14px;font-weight:700;color:var(--gold)}
 .fact.money{background:var(--gold);border-color:var(--gold)}
 .fact.money .k{color:#6b4a00}
 @media(max-width:640px){.facts{grid-template-columns:1fr 1fr}.fact.where{grid-column:1/-1}}
@@ -134,19 +135,20 @@ main{padding:0 0 60px}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
 @media(max-width:800px){.cols{grid-template-columns:1fr}}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-.chips span{background:var(--card);border:2px solid var(--line);border-radius:99px;padding:5px 14px;font-weight:600;font-size:15px}
+.chips span{background:var(--card2);border:2px solid var(--line);border-radius:99px;padding:5px 14px;font-weight:600;font-size:15px}
 .chips span:nth-child(5n+1){background:var(--gold-bg);border-color:var(--gold-bg)}
 .chips span:nth-child(5n+3){background:var(--grape-bg);border-color:var(--grape-bg)}
 .chips span:nth-child(5n+4){background:var(--red-bg);border-color:var(--red-bg)}
 .chips span.q{background:transparent;border-style:dashed;color:var(--mute)}
+.chips span:nth-child(5n+1){color:#ffe08a}.chips span:nth-child(5n+3){color:#c6f58f}.chips span:nth-child(5n+4){color:#ffb3b8}
 .lines{list-style:none;margin:0;padding:0}
 .lines li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 0;border-bottom:2px dotted var(--line);font-size:15px}
 .lines li b{white-space:nowrap;font-variant-numeric:tabular-nums}
 .lines li.done span{color:var(--mute);text-decoration:line-through}
 .lines li.tot{border:0;font-weight:800;font-size:17px}
 .lines small{color:var(--mute)}
-.callout{background:var(--paper);border-radius:16px;padding:16px 18px;margin-top:16px}
-.callout.wa{background:#e3f7e6}
+.callout{background:var(--card2);border-radius:16px;padding:16px 18px;margin-top:16px}
+.callout.wa{background:#0f3a24;border:2px solid #1fa85566}
 .callout.wa .btn{background:#1fa855;box-shadow:0 4px 0 #13763a}
 .linkbox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}
 .linkbox input{font-size:14px;min-height:46px}
@@ -166,7 +168,7 @@ footer a{color:var(--mute)}
 .stat small{color:var(--mute);font-weight:600;font-size:14px;display:block}
 .stat .big{font-size:clamp(26px,3.6vw,34px);white-space:nowrap}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-.tabs button{min-height:44px;padding:0 18px;border-radius:99px;border:2px solid var(--line);background:#fff;font-weight:700;color:var(--mute)}
+.tabs button{min-height:44px;padding:0 18px;border-radius:99px;border:2px solid var(--line);background:var(--card2);font-weight:700;color:var(--mute)}
 .tabs button.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .scroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
@@ -180,9 +182,9 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 .add.three{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto}
 @media(max-width:700px){.add,.add.items,.add.three{grid-template-columns:1fr 1fr}.add>:first-child,.add button{grid-column:1/-1}}
 .colgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:16px}
-.col{background:var(--paper);border-radius:18px;padding:14px;display:grid;gap:8px}
+.col{background:var(--card2);border-radius:18px;padding:14px;display:grid;gap:8px}
 .col.off{opacity:.6}
-.col .meter{height:10px;background:#fff;border-radius:99px;overflow:hidden}
+.col .meter{height:10px;background:var(--card);border-radius:99px;overflow:hidden}
 .col .meter i{display:block;height:100%;background:var(--grape)}
 .col .nums{font-size:14px;color:var(--mute)}
 .col-list li{align-items:center}
