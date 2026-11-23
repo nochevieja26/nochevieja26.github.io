@@ -108,7 +108,7 @@ label.f small,.f small{color:var(--mute);font-weight:500;font-size:14px}
 .tabs2 button.on{background:#fff;color:var(--red2)}
 .stub h2{font-size:clamp(34px,7vw,46px);margin-top:16px}
 .stub p{margin:6px 0 0;color:#ffe2e2;font-weight:500}
-.stamp{position:absolute;right:22px;top:20px;transform:rotate(-12deg);border:4px solid #fff;color:#fff;border-radius:12px;padding:4px 14px;font:400 26px "Bagel Fat One",sans-serif;opacity:.95}
+.stamp{display:inline-block;transform:rotate(-8deg);margin:10px 0 10px 4px;border:4px solid #fff;color:#fff;border-radius:12px;padding:4px 14px;font:400 26px "Bagel Fat One",sans-serif;opacity:.95}
 .stamp.paid{border-color:var(--gold);color:var(--gold)}
 
 /* ---------- datos clave ---------- */
@@ -129,6 +129,7 @@ main{padding:0 0 60px}
 .block h3,.card h3{font-size:22px;margin:22px 0 8px}
 .card{background:var(--card);border-radius:22px;padding:clamp(18px,3vw,28px);border:2px solid var(--line)}
 .card+.card{margin-top:18px}
+.card.block+.card.block{margin-top:18px}
 .card h2{font-size:clamp(26px,4vw,34px);margin-bottom:6px}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
 @media(max-width:800px){.cols{grid-template-columns:1fr}}
@@ -152,7 +153,7 @@ main{padding:0 0 60px}
 .paybox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center}
 .paybox .who{font:400 clamp(28px,5vw,36px)/1.05 "Bagel Fat One",sans-serif}
 .paybox .num{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
-.due{display:grid;gap:2px}
+.due{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
 .due .big{font-size:clamp(60px,15vw,96px);line-height:.95;color:#fff}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .banner{background:var(--gold);color:var(--night);padding:10px 16px;font-weight:700;text-align:center}
@@ -227,7 +228,7 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
     </div>
     <p class="note" id="i-notes"></p>
   </div>
-  <div class="wrap" id="below"></div>
+  <div class="narrow" id="below"></div>
 </main>
 
 <footer><div class="narrow row" style="justify-content:space-between"><span>¡Feliz 2027!</span><a href="#gestion" id="adminLink">Zona de gestores</a></div></footer>
@@ -268,7 +269,7 @@ const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let fw=null;
 try{if(window.Fireworks&&!reduceMotion){fw=new Fireworks.Fireworks($('fw'),{autoresize:true,opacity:.45,acceleration:1.02,friction:.97,gravity:1.4,particles:60,traceLength:3,traceSpeed:10,explosion:5,intensity:4,flickering:40,lineStyle:'round',
  hue:{min:0,max:60},delay:{min:50,max:90},rocketsPoint:{min:15,max:85},lineWidth:{explosion:{min:1,max:3},trace:{min:1,max:2}},brightness:{min:55,max:85},decay:{min:.015,max:.03},mouse:{click:false,move:false},sound:{enabled:false}});
- const io=new IntersectionObserver(([e])=>{try{e.isIntersecting?fw.start():fw.stop()}catch(x){}});io.observe($('sky'))}}catch(e){fw=null}
+ const io=new IntersectionObserver(([e])=>{try{e.isIntersecting?fw.start():fw.stop()}catch(x){}});io.observe($('sky'));setTimeout(()=>{try{fw.start();fw.launch(4)}catch(x){}},400)}}catch(e){fw=null}
 function party(){if(reduceMotion||!window.confetti)return;try{const c={colors:['#e5242f','#ffc93a','#5fae1e','#ffffff'],disableForReducedMotion:true};
  confetti({...c,particleCount:140,spread:80,origin:{y:.35}});setTimeout(()=>confetti({...c,particleCount:70,angle:60,spread:60,origin:{x:0,y:.5}}),250);setTimeout(()=>confetti({...c,particleCount:70,angle:120,spread:60,origin:{x:1,y:.5}}),400)}catch(e){}}
 const target=new Date('2027-01-01T00:00:00+01:00').getTime(),pad=n=>String(n).padStart(2,'0');
@@ -295,7 +296,7 @@ function paintInfo(ev,money){const name=ev.event_name||'Nochevieja 2026',parts=n
  $('i-notes').textContent=[ev.notes||'',ev.pay_deadline?`Hay que pagar antes del ${fdate(ev.pay_deadline)}.`:''].filter(Boolean).join(' ');
 }
 // Prepara la página: 'ticket' (inicio y ficha) o 'wide' (gestión y recaudador)
-function layout(mode,title,sub){$('factsWrap').classList.toggle('hidden',mode!=='ticket');$('below').innerHTML='';
+function layout(mode,title,sub){$('factsWrap').classList.toggle('hidden',mode!=='ticket');$('below').innerHTML='';$('below').className=mode==='wide'?'wrap':'narrow';
  if(mode==='wide'){$('view').innerHTML=`<div class="ticket"><div class="stub" style="border-radius:24px"><h2 style="margin:0">${esc(title)}</h2>${sub?`<p>${sub}</p>`:''}</div></div>`;return $('below')}
  return $('view')}
 function nav(active){const tok=store.get('nv_token');
@@ -376,12 +377,12 @@ async function viewHome(){nav('home');const v=layout('ticket');
    catch(err){$('s-msg').className='msg err';$('s-msg').textContent=err.message;$('s-go').disabled=false}});
  };
  let pane2=false;draw();
- $('below').innerHTML=`<div class="cols block">
-   <section class="card" aria-labelledby="h-w"><h2 id="h-w">Quién viene</h2>
+ $('below').innerHTML=`<div>
+   <section class="card block" aria-labelledby="h-w"><h2 id="h-w">Quién viene</h2>
     <p class="sub">${si.length} ${si.length===1?'confirmado':'confirmados'}${qz.length?` y ${qz.length} en duda`:''}${m.espera?`, ${m.espera} en lista de espera`:''}.</p>
     <div class="chips">${si.map(c=>`<span>${esc(c.name)}</span>`).join('')}${qz.map(c=>`<span class="q" title="En duda">${esc(c.name)}?</span>`).join('')}${d.coming.length?'':'<span class="q">Todavía nadie. Estrena tú la lista.</span>'}</div>
    </section>
-   <section class="card" aria-labelledby="h-s"><h2 id="h-s">En qué se va el dinero</h2>
+   <section class="card block" aria-labelledby="h-s"><h2 id="h-s">En qué se va el dinero</h2>
     <p class="sub">Local, hielo, vasos y música los pagamos entre todos. Tú solo traes tu bebida. Al apuntarte te toca por sorteo a quién hacerle el Bizum.</p>${shoppingHtml(d.items,m)}</section>
   </div>`;
  if(location.hash==='#apuntarme'||location.hash==='#entrar')setTimeout(()=>$('apuntarme')?.scrollIntoView({behavior:'smooth'}),50);
@@ -398,7 +399,7 @@ async function viewMe(tok){
  const wa=WA_RE.test(d.whatsapp_url||'')?d.whatsapp_url:'',cash=g.pay_method==='efectivo',waiting=g.status==='espera',out=g.status==='no';
  const stub=out?`<p style="margin:0">Tu entrada</p><h2>${esc(g.name)}</h2><p>Has marcado que no vienes. Si cambias de idea, actualízalo más abajo.</p>`
   :waiting?`<p style="margin:0">${esc(g.name)}, estás en la lista de espera</p><div class="due"><span class="big">Puesto ${esc(g.wait_pos)}</span></div><p>Si alguien se da de baja pasas solo, y aquí verás lo que te toca pagar.</p>`
-  :`${g.paid?'<span class="stamp paid">Pagado</span>':''}<p style="margin:0">${isNew?'¡Ya estás dentro, ':'Hola, '}${esc(g.name)}${isNew?'!':''}</p><div class="due"><span class="big">${eur(m.per_person)}</span></div>
+  :`<p style="margin:0">${isNew?'¡Ya estás dentro, ':'Hola, '}${esc(g.name)}${isNew?'!':''}</p><div class="due"><span class="big">${eur(m.per_person)}</span>${g.paid?'<span class="stamp paid">Pagado</span>':''}</div>
     <p>${g.paid?'Tu parte está pagada. ¡Nos vemos el 31!':g.claimed?'Has avisado de que ya pagaste. Falta que tu recaudador lo confirme.':`Es lo que te toca poner${ev.pay_deadline?`, antes del ${fdate(ev.pay_deadline)}`:''}.`}${g.status==='quiza'?' Has marcado «quizá».':''}</p>`;
  const body=out||waiting?`<p style="margin:0">${d.invited_by?`Te apuntó ${esc(d.invited_by)}. `:''}Mientras tanto, guarda tu enlace para volver.</p>`
   :g.paid?`<p style="margin:0">${d.invited_by?`Te apuntó ${esc(d.invited_by)}. `:''}No tienes que hacer nada más.</p>`
