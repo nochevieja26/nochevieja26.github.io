@@ -86,6 +86,12 @@ select * from (values
 ) v(name,cat,q,p,ord,opt)
 where not exists (select 1 from public.items);
 
+-- PIN personal de 4 cifras para volver a entrar con teléfono + PIN
+alter table public.guests add column if not exists pin_hash text;
+alter table public.guests add column if not exists login_fails int not null default 0;     -- fallos seguidos
+alter table public.guests add column if not exists login_fail_since timestamptz;
+alter table public.guests add column if not exists login_fails_total int not null default 0; -- 15 → bloqueado hasta crear PIN nuevo
+
 alter table public.settings add column if not exists whatsapp_url text not null default '';
 alter table public.settings add column if not exists admin_contact text not null default '';
 
@@ -98,6 +104,7 @@ revoke all on public.settings, public.collectors, public.guests, public.items fr
 -- Versiones antiguas de funciones cuyos parámetros han cambiado
 drop function if exists public._check_pin(text);
 drop function if exists public.signup(text,text,text,text);
+drop function if exists public.signup(text,text,text,text,text);
 drop function if exists public.update_me(uuid,text,text,text,text);
 drop function if exists public.admin_guest_save(text,uuid,text,text,text,text,boolean);
 
@@ -198,24 +205,26 @@ returns json language sql stable security definer set search_path = public as $$
                        from items), '[]'::json));
 $$;
 
-create or replace function public.signup(p_name text, p_phone text, p_status text, p_brings text, p_pay text)
-returns uuid language plpgsql volatile security definer set search_path = public as $$
+create or replace function public.signup(p_name text, p_phone text, p_status text, p_brings text, p_pay text, p_pin text)
+returns uuid language plpgsql volatile security definer set search_path = public, extensions as $$
 declare t uuid; st text := case when p_status in ('si','quiza','no') then p_status else 'si' end;
 begin
   if char_length(trim(coalesce(p_name,''))) = 0 then raise exception 'Falta el nombre'; end if;
   if char_length(public._phone_key(p_phone)) < 9 then
     raise exception 'Pon un teléfono válido. Si no quieres darlo, habla con un gestor y te apunta él.';
   end if;
+  if coalesce(p_pin,'') !~ '^[0-9]{4}$' then raise exception 'El PIN tiene que ser de 4 cifras'; end if;
   if (select count(*) from guests) >= 300 then raise exception 'La lista está llena'; end if;
   perform pg_advisory_xact_lock(2026);
   if public._phone_owner(p_phone, null) is not null then
-    raise exception 'Ese teléfono ya está apuntado. Si es el tuyo y has perdido tu enlace, pídeselo a un gestor.';
+    raise exception 'Ese teléfono ya está apuntado. Si es el tuyo, entra en «Ya estoy apuntado» con tu teléfono y tu PIN.';
   end if;
-  insert into guests (name, phone, status, brings, pay_method, collector_id)
+  insert into guests (name, phone, status, brings, pay_method, collector_id, pin_hash)
   values (left(trim(p_name),60), left(trim(coalesce(p_phone,'')),30), st,
           left(trim(coalesce(p_brings,'')),120),
           case when p_pay = 'efectivo' then 'efectivo' else 'bizum' end,
-          case when st <> 'no' then public._pick_collector() end)
+          case when st <> 'no' then public._pick_collector() end,
+          crypt(p_pin, gen_salt('bf', 6)))
   returning token into t;
   return t;
 end $$;
@@ -223,7 +232,7 @@ end $$;
 -- ---------- ficha personal ----------
 create or replace function public.me(p_token uuid)
 returns json language sql stable security definer set search_path = public as $$
-  select json_build_object('guest', json_build_object('name',name,'phone',phone,'status',status,'brings',brings,'paid',paid,'pay_method',pay_method),
+  select json_build_object('guest', json_build_object('name',name,'phone',phone,'status',status,'brings',brings,'paid',paid,'pay_method',pay_method,'has_pin',pin_hash is not null),
                            'collector', public._collector_json(collector_id),
                            'whatsapp_url', (select whatsapp_url from settings where id = 1),
                            'event', public._event(), 'money', public._money())
@@ -249,6 +258,49 @@ begin
   where token = p_token returning id into gid;
   if gid is null then raise exception 'Enlace no válido'; end if;
   perform public._assign_missing();
+end $$;
+
+-- Entrar con teléfono + PIN. Devuelve {"token": ...} o {"error": ...}
+-- (no lanza error para que el contador de fallos se guarde)
+create or replace function public.login(p_phone text, p_pin text)
+returns json language plpgsql volatile security definer set search_path = public, extensions as $$
+declare g guests; bad constant text := 'Teléfono o PIN incorrectos';
+begin
+  if char_length(public._phone_key(p_phone)) < 9 or coalesce(p_pin,'') !~ '^[0-9]{4}$' then
+    return json_build_object('error', bad);
+  end if;
+  select * into g from guests where phone_key = public._phone_key(p_phone) for update;
+  if g.id is null then return json_build_object('error', bad); end if;
+  if g.pin_hash is null then
+    return json_build_object('error','Todavía no tienes PIN. Pide tu enlace a un gestor y créalo desde tu ficha.');
+  end if;
+  if g.login_fails_total >= 15 then
+    return json_build_object('error','Acceso bloqueado por demasiados intentos. Pide tu enlace a un gestor y crea un PIN nuevo.');
+  end if;
+  if g.login_fails >= 5 and g.login_fail_since > now() - interval '15 minutes' then
+    return json_build_object('error','Demasiados intentos. Espera 15 minutos.');
+  end if;
+  if crypt(p_pin, g.pin_hash) <> g.pin_hash then
+    update guests set
+      login_fails = case when login_fail_since > now() - interval '15 minutes' then login_fails + 1 else 1 end,
+      login_fail_since = case when login_fail_since > now() - interval '15 minutes' then login_fail_since else now() end,
+      login_fails_total = login_fails_total + 1
+    where id = g.id;
+    return json_build_object('error', bad);
+  end if;
+  update guests set login_fails = 0, login_fail_since = null where id = g.id and login_fails > 0;
+  return json_build_object('token', g.token);
+end $$;
+
+-- Crear o cambiar el PIN desde la ficha (con el enlace personal). Desbloquea el acceso.
+create or replace function public.set_pin(p_token uuid, p_pin text)
+returns json language plpgsql volatile security definer set search_path = public, extensions as $$
+begin
+  if coalesce(p_pin,'') !~ '^[0-9]{4}$' then return json_build_object('error','El PIN tiene que ser de 4 cifras'); end if;
+  update guests set pin_hash = crypt(p_pin, gen_salt('bf', 6)), login_fails = 0, login_fail_since = null, login_fails_total = 0
+  where token = p_token;
+  if not found then return json_build_object('error','Enlace no válido'); end if;
+  return json_build_object('ok', true);
 end $$;
 
 -- ---------- gestores (PIN) ----------
@@ -310,7 +362,7 @@ begin
               round(count(g.id) filter (where g.status = 'si' and g.paid) * pp, 2) collected
        from collectors c left join guests g on g.collector_id = c.id
        group by c.id) x), '[]'::json),
-    'guests', coalesce((select json_agg(json_build_object('id',id,'token',token,'name',name,'phone',phone,'status',status,'brings',brings,'paid',paid,'pay_method',pay_method,'collector_id',collector_id,'created_at',created_at) order by name) from guests), '[]'::json),
+    'guests', coalesce((select json_agg(json_build_object('id',id,'token',token,'name',name,'phone',phone,'status',status,'brings',brings,'paid',paid,'pay_method',pay_method,'collector_id',collector_id,'has_pin',pin_hash is not null,'locked',login_fails_total >= 15,'created_at',created_at) order by name) from guests), '[]'::json),
     'items', coalesce((select json_agg(json_build_object('id',id,'name',name,'cat',cat,'q',q,'p',p,'who',who,'done',done,'opt',opt,'ord',ord) order by ord, name) from items), '[]'::json));
 end $$;
 
@@ -453,7 +505,8 @@ end $$;
 -- ---------- permisos ----------
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function
-  public.public_info(), public.signup(text,text,text,text,text),
+  public.public_info(), public.signup(text,text,text,text,text,text),
+  public.login(text,text), public.set_pin(uuid,text),
   public.me(uuid), public.update_me(uuid,text,text,text,text,text),
   public.admin_setup_pin(text), public.admin_change_pin(text,text), public.admin_state(text),
   public.admin_guest_save(text,uuid,text,text,text,text,boolean,text,uuid), public.admin_guest_delete(text,uuid),

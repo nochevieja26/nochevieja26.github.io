@@ -242,11 +242,15 @@ function mock(fn,a){const d=demoDb(),S=d.settings,save=()=>store.set('nv_demo2',
  const colJson=id=>{const c=d.collectors.find(x=>x.id===id);return c?{name:c.name,phone:c.phone}:null};
  const r=(()=>{switch(fn){
  case'public_info':return{event:ev(),money:money(),coming:d.guests.filter(g=>g.status!=='no').map(g=>({name:g.name,status:g.status})).sort((x,y)=>x.name.localeCompare(y.name,'es')),items:d.items.map(({id,ord,...i})=>i)};
- case'signup':{if(!String(a.p_name||'').trim())throw new Error('Falta el nombre');if(pkey(a.p_phone).length<9)throw new Error('Pon un teléfono válido. Si no quieres darlo, habla con un gestor y te apunta él.');if(owner(a.p_phone))throw new Error('Ese teléfono ya está apuntado. Si es el tuyo y has perdido tu enlace, pídeselo a un gestor.');const s=st(a.p_status);
-  const g={id:crypto.randomUUID(),token:crypto.randomUUID(),name:a.p_name.trim().slice(0,60),phone:(a.p_phone||'').trim().slice(0,30),status:s,brings:(a.p_brings||'').trim().slice(0,120),paid:false,pay_method:pm(a.p_pay),collector_id:s!=='no'?pick():null,created_at:new Date().toISOString()};d.guests.push(g);save();return g.token}
- case'me':{const g=d.guests.find(x=>x.token===a.p_token);return g?{guest:{name:g.name,phone:g.phone,status:g.status,brings:g.brings,paid:g.paid,pay_method:g.pay_method},collector:colJson(g.collector_id),whatsapp_url:S.whatsapp_url||'',event:ev(),money:money()}:null}
+ case'signup':{if(!String(a.p_name||'').trim())throw new Error('Falta el nombre');if(pkey(a.p_phone).length<9)throw new Error('Pon un teléfono válido. Si no quieres darlo, habla con un gestor y te apunta él.');if(owner(a.p_phone))throw new Error('Ese teléfono ya está apuntado. Si es el tuyo, entra en «Ya estoy apuntado» con tu teléfono y tu PIN.');if(!/^\d{4}$/.test(a.p_pin||''))throw new Error('El PIN tiene que ser de 4 cifras');const s=st(a.p_status);
+  const g={id:crypto.randomUUID(),token:crypto.randomUUID(),name:a.p_name.trim().slice(0,60),phone:(a.p_phone||'').trim().slice(0,30),status:s,brings:(a.p_brings||'').trim().slice(0,120),paid:false,pay_method:pm(a.p_pay),collector_id:s!=='no'?pick():null,pin:a.p_pin,fails:0,created_at:new Date().toISOString()};d.guests.push(g);save();return g.token}
+ case'me':{const g=d.guests.find(x=>x.token===a.p_token);return g?{guest:{name:g.name,phone:g.phone,status:g.status,brings:g.brings,paid:g.paid,pay_method:g.pay_method,has_pin:!!g.pin},collector:colJson(g.collector_id),whatsapp_url:S.whatsapp_url||'',event:ev(),money:money()}:null}
  case'update_me':{const g=d.guests.find(x=>x.token===a.p_token);if(!g)throw new Error('Enlace no válido');if(!a.p_name.trim())throw new Error('Falta el nombre');if(pkey(a.p_phone).length<9)throw new Error('Pon un teléfono válido. Si no quieres darlo, habla con un gestor.');if(owner(a.p_phone,g.id))throw new Error('Ese teléfono ya lo tiene otra persona de la lista. Habla con un gestor.');
   Object.assign(g,{name:a.p_name.trim(),phone:a.p_phone.trim(),status:st(a.p_status),brings:a.p_brings.trim(),pay_method:pm(a.p_pay)});assign();save();return null}
+ case'login':{const k=pkey(a.p_phone),g=k.length>=9&&d.guests.find(x=>pkey(x.phone)===k);if(!g)return{error:'Teléfono o PIN incorrectos'};
+  if(!g.pin)return{error:'Todavía no tienes PIN. Pide tu enlace a un gestor y créalo desde tu ficha.'};if((g.fails||0)>=5)return{error:'Demasiados intentos. Espera 15 minutos.'};
+  if(g.pin!==a.p_pin){g.fails=(g.fails||0)+1;save();return{error:'Teléfono o PIN incorrectos'}}g.fails=0;save();return{token:g.token}}
+ case'set_pin':{if(!/^\d{4}$/.test(a.p_pin||''))return{error:'El PIN tiene que ser de 4 cifras'};const g=d.guests.find(x=>x.token===a.p_token);if(!g)return{error:'Enlace no válido'};g.pin=a.p_pin;g.fails=0;save();return{ok:true}}
  case'admin_setup_pin':if(String(a.p_new||'').length<6)return{error:'El PIN debe tener al menos 6 caracteres'};if(S.pin)return{error:'El PIN ya está creado'};S.pin=a.p_new;save();return{ok:true};
  }
  const e=pinErr(a.p_pin);if(e)return{error:e};
@@ -256,7 +260,7 @@ function mock(fn,a){const d=demoDb(),S=d.settings,save=()=>store.set('nv_demo2',
   return{event:ev(),money:money(),whatsapp_url:S.whatsapp_url||'',
    collectors:d.collectors.map(c=>{const G=d.guests.filter(g=>g.collector_id===c.id);const paid=G.filter(g=>g.status==='si'&&g.paid).length;
     return{...c,assigned:G.filter(g=>g.status!=='no').length,paid,unpaid:G.filter(g=>g.status==='si'&&!g.paid).length,cash:G.filter(g=>g.status!=='no'&&g.pay_method==='efectivo').length,collected:Math.round(paid*pp*100)/100}}),
-   guests:[...d.guests].sort((x,y)=>x.name.localeCompare(y.name,'es')),items:[...d.items].sort((x,y)=>x.ord-y.ord)}}
+   guests:[...d.guests].sort((x,y)=>x.name.localeCompare(y.name,'es')).map(({pin,fails,...g})=>({...g,has_pin:!!pin,locked:false})),items:[...d.items].sort((x,y)=>x.ord-y.ord)}}
  case'admin_guest_save':{if(!String(a.p_name||'').trim())return{error:'Falta el nombre'};{const o=owner(a.p_phone,a.p_id);if(o)return{error:'Ese teléfono ya lo tiene '+o}}let g=d.guests.find(x=>x.id===a.p_id);
   if(!g){g={id:crypto.randomUUID(),token:crypto.randomUUID(),created_at:new Date().toISOString()};d.guests.push(g)}
   Object.assign(g,{name:a.p_name.trim(),phone:(a.p_phone||'').trim(),status:st(a.p_status),brings:(a.p_brings||'').trim(),paid:!!a.p_paid,pay_method:pm(a.p_pay),collector_id:a.p_collector||null});assign();save();return{id:g.id}}
@@ -301,7 +305,7 @@ function paintInfo(ev,money){
  $('i-notes').textContent=[ev.end_time?'Hasta las '+ev.end_time+'.':'',ev.notes||''].filter(Boolean).join(' ');
 }
 function nav(active){const tok=store.get('nv_token');
- $('nav').innerHTML=[['./','Inicio','home'],tok?['?t='+encodeURIComponent(tok),'Mi ficha','me']:['./#apuntarme','Apuntarme','home2'],['#gestion','Gestión','admin']]
+ $('nav').innerHTML=[['./','Inicio','home'],tok?['?t='+encodeURIComponent(tok),'Mi ficha','me']:['./#entrar','Entrar','home2'],['#gestion','Gestión','admin']]
   .map(([h,l,k])=>`<a href="${h}" class="${k===active?'on':''}">${l}</a>`).join('')}
 const segHtml=(cur,dis='')=>`<div class="seg" role="group" aria-label="¿Vienes?">${Object.entries(STATUS).map(([k,l])=>`<button type="button" data-s="${k}" class="${cur===k?'on':''}"${dis}>${l}</button>`).join('')}</div>`;
 function bindSeg(root,onPick){root.querySelectorAll('.seg').forEach(sg=>sg.addEventListener('click',e=>{const b=e.target.closest('[data-s],[data-p]');if(!b)return;sg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));onPick&&onPick(b.dataset.s)}))}
@@ -332,6 +336,7 @@ async function viewHome(){nav('home');const v=$('view');
      <label class="f">Nombre<input type="text" id="s-name" name="name" required maxlength="60" autocomplete="name"></label>
      <label class="f">Teléfono <small>Obligatorio: sirve para que nadie se apunte dos veces y para avisarte.</small><input type="tel" id="s-phone" name="tel" required maxlength="30" autocomplete="tel" inputmode="tel" placeholder="600 000 000"></label>
      <p class="sub" style="margin:-6px 0 0;font-size:14px">¿Prefieres no dar tu teléfono? Habla con ${d.event.admin_contact?`<b style="color:var(--ink)">${esc(d.event.admin_contact)}</b>`:'un gestor'} y te apunta él.</p>
+     <label class="f">Elige un PIN de 4 cifras <small>Con tu teléfono y este PIN vuelves a entrar desde cualquier móvil.</small><input type="password" id="s-pin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" style="max-width:160px;letter-spacing:.3em"></label>
      <div class="f" style="display:grid;gap:4px;font-weight:600">¿Vienes?${segHtml('si')}</div>
      <label class="f">¿Qué traes? <small>Opcional: tu bebida, algo para compartir, el cotillón…</small><input type="text" id="s-brings" maxlength="120"></label>
      <div class="f" style="display:grid;gap:4px;font-weight:600">¿Cómo vas a pagar?${payHtml('bizum')}<p class="warn hidden" id="s-warn">${CASH_WARN}</p></div>
@@ -339,6 +344,16 @@ async function viewHome(){nav('home');const v=$('view');
      <p class="msg" id="s-msg" aria-live="polite"></p>
     </form>
    </div>
+  </section>
+  <section class="card" id="entrar" aria-labelledby="h-in"><h2 id="h-in">Ya estoy apuntado</h2>
+   <p class="sub">Entra con tu teléfono y tu PIN para ver lo que te toca pagar y cambiar tus datos.</p>
+   <form class="stack-form" id="login" autocomplete="on">
+    <div class="two"><label class="f">Teléfono<input type="tel" id="l-phone" required maxlength="30" inputmode="tel" autocomplete="tel"></label>
+    <label class="f">PIN<input type="password" id="l-pin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" style="letter-spacing:.3em"></label></div>
+    <button class="btn2" type="submit" id="l-go">Entrar a mi ficha</button>
+    <p class="msg" id="l-msg" aria-live="polite"></p>
+    <p class="sub" style="margin:0;font-size:14px">¿No te acuerdas del PIN? Pide tu enlace a ${d.event.admin_contact?esc(d.event.admin_contact):'un gestor'} y crea uno nuevo desde tu ficha.</p>
+   </form>
   </section>
   <section class="card"><h2>Cómo se paga</h2><p style="margin:0">Para no saturar a nadie, al apuntarte te toca por sorteo uno de los ${d.event.collectors||'varios'} recaudadores, repartidos a partes iguales. En tu ficha verás a quién y su número de Bizum.</p>${d.event.pay_how?`<p class="sub" style="margin:8px 0 0">${esc(d.event.pay_how)}</p>`:''}</section>
   </div>
@@ -351,13 +366,16 @@ async function viewHome(){nav('home');const v=$('view');
     <p class="sub">Lo que se compra entre todos. El alcohol lo trae cada uno.</p>${shoppingHtml(d.items,d.money)}</section>
   </div></div>`;
  bindSeg(v);bindPayWarn(v,'s-warn');
+ $('login').addEventListener('submit',async e=>{e.preventDefault();const m=$('l-msg');m.className='msg';m.textContent='Comprobando…';$('l-go').disabled=true;
+  try{const r=await rpc('login',{p_phone:$('l-phone').value,p_pin:$('l-pin').value});store.set('nv_token',r.token);location.href='?t='+encodeURIComponent(r.token)}
+  catch(err){m.className='msg err';m.textContent=err.message;$('l-go').disabled=false}});
  $('other')&&$('other').addEventListener('click',()=>{$('signupWrap').classList.remove('hidden');$('s-name').focus()});
  $('signup').addEventListener('submit',async e=>{e.preventDefault();const name=$('s-name').value.trim();if(!name)return;
   $('s-go').disabled=true;$('s-msg').className='msg';$('s-msg').textContent='Apuntando…';
-  try{const t=await rpc('signup',{p_name:name,p_phone:$('s-phone').value,p_status:segVal($('signup')),p_brings:$('s-brings').value,p_pay:payVal($('signup'))});
+  try{const t=await rpc('signup',{p_name:name,p_phone:$('s-phone').value,p_status:segVal($('signup')),p_brings:$('s-brings').value,p_pay:payVal($('signup')),p_pin:$('s-pin').value});
    if(!store.get('nv_token'))store.set('nv_token',t);location.href='?t='+encodeURIComponent(t)+'&nuevo=1'}
   catch(err){$('s-msg').className='msg err';$('s-msg').textContent=err.message;$('s-go').disabled=false}});
- if(location.hash==='#apuntarme')setTimeout(()=>$('apuntarme')?.scrollIntoView(),50);
+ if(location.hash==='#apuntarme'||location.hash==='#entrar')setTimeout(()=>$(location.hash.slice(1))?.scrollIntoView(),50);
 }
 
 /* ================= vista: ficha personal ================= */
@@ -400,9 +418,15 @@ async function viewMe(tok){const v=$('view');
     <p class="msg" id="m-msg" aria-live="polite"></p>
    </form>
    <p class="sub" style="margin-top:14px">El pago lo marcan los gestores cuando les llega.</p>
+   <h3>${g.has_pin?'Cambiar tu PIN':'Crea tu PIN'}</h3>
+   ${g.has_pin?'':'<p class="warn" style="margin:0 0 8px">Todavía no tienes PIN: sin él no podrás entrar desde otro móvil con tu teléfono.</p>'}
+   <form class="row" id="pin-form" autocomplete="off"><input type="password" id="p-pin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" aria-label="PIN de 4 cifras" placeholder="4 cifras" style="max-width:150px;letter-spacing:.3em">
+    <button class="btn2" type="submit">${g.has_pin?'Cambiar PIN':'Guardar PIN'}</button></form><p class="msg" id="pin-msg" aria-live="polite"></p>
   </section></div>`;
  bindSeg(v);bindPayWarn(v,'m-warn');
  $('me-copynum')&&$('me-copynum').addEventListener('click',e=>copy(c.phone.replace(/\s/g,''),e.target));
+ $('pin-form').addEventListener('submit',async e=>{e.preventDefault();const m=$('pin-msg');
+  try{await rpc('set_pin',{p_token:tok,p_pin:$('p-pin').value});m.className='msg ok';m.textContent='PIN guardado. Ya puedes entrar con tu teléfono y este PIN.';$('p-pin').value=''}catch(err){m.className='msg err';m.textContent=err.message}});
  $('me-copy').addEventListener('click',e=>copy(link,e.target));
  $('me-form').addEventListener('submit',async e=>{e.preventDefault();$('m-go').disabled=true;$('m-msg').className='msg';$('m-msg').textContent='Guardando…';
   try{await rpc('update_me',{p_token:tok,p_name:$('m-name').value,p_phone:$('m-phone').value,p_status:segVal($('me-form')),p_brings:$('m-brings').value,p_pay:payVal($('me-form'))});
@@ -467,7 +491,7 @@ function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone+' '
    <td data-l="Paga a"><select data-f="collector" aria-label="Recaudador"><option value="">— Sin asignar —</option>${A.collectors.map(c=>`<option value="${esc(c.id)}"${g.collector_id===c.id?' selected':''}>${esc(c.name)}${c.active?'':' (inactivo)'}</option>`).join('')}</select></td>
    <td data-l="Cómo"><select data-f="pay" aria-label="Forma de pago">${Object.entries(PAY).map(([k,l])=>`<option value="${k}"${g.pay_method===k?' selected':''}>${l}</option>`).join('')}</select></td>
    <td data-l="Pagado"><label class="tick"><input type="checkbox" data-f="paid"${g.paid?' checked':''} aria-label="Ha pagado"></label></td>
-   <td data-l="Ficha"><button class="btn2" type="button" data-link="${esc(g.token)}" style="min-height:38px;padding:0 12px">Enlace</button></td>
+   <td data-l="Ficha"><button class="btn2" type="button" data-link="${esc(g.token)}" style="min-height:38px;padding:0 12px">Enlace</button>${g.locked?' <small class="warn" style="display:inline">bloqueado</small>':g.has_pin?'':' <small class="sub" style="font-size:13px">sin PIN</small>'}</td>
    <td class="del"><button class="ghost" type="button" data-del aria-label="Borrar a ${esc(g.name)}">✕</button></td></tr>`).join('')||'<tr><td colspan="9" class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</td></tr>'}
   </tbody></table></div>
   <form class="add" id="gAdd" autocomplete="off"><input type="text" id="g-name" placeholder="Nombre" required maxlength="60" aria-label="Nombre"><input type="tel" id="g-phone" placeholder="Teléfono" maxlength="30" aria-label="Teléfono"><input type="text" id="g-brings" placeholder="Qué trae" maxlength="120" aria-label="Qué trae"><button class="btn" type="submit">Añadir</button></form></section>`;
