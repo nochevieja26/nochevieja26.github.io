@@ -129,7 +129,7 @@ label.f small,.f small{color:var(--mute);font-weight:500;font-size:14px}
 .stamp.paid{border-color:var(--gold);color:var(--gold)}
 
 /* ---------- datos clave ---------- */
-.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 0}
+.facts{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:12px;margin:22px 0 0}
 .fact{background:var(--card);border-radius:18px;padding:14px 16px;border:2px solid var(--line)}
 .fact.money .v{color:var(--night)}
 .fact .k{display:block;font-size:14px;color:var(--mute);font-weight:600}
@@ -137,7 +137,7 @@ label.f small,.f small{color:var(--mute);font-weight:500;font-size:14px}
 .fact a{font-size:14px;font-weight:700;color:var(--gold)}
 .fact.money{background:var(--gold);border-color:var(--gold)}
 .fact.money .k{color:#6b4a00}
-@media(max-width:640px){.facts{grid-template-columns:1fr 1fr}.fact.where{grid-column:1/-1}}
+@media(max-width:640px){.facts{grid-template-columns:1fr}}
 .note{color:var(--mute);font-size:15px;margin:12px 0 0;text-align:center}
 
 /* ---------- bloques ---------- */
@@ -274,7 +274,6 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
     <div class="facts" aria-label="Datos de la fiesta">
       <div class="fact where"><span class="k">Dónde</span><span class="v" id="i-place">Por confirmar</span><span id="i-addr" class="k" style="margin-top:4px"></span><span id="i-map"></span></div>
       <div class="fact"><span class="k">Hasta</span><span class="v" id="i-end">Que aguante el cuerpo</span></div>
-      <div class="fact money"><span class="k">Cada uno pone</span><span class="v" id="i-pp">—</span><span class="k" id="i-ppnote"></span></div>
     </div>
     <p class="note" id="i-notes"></p>
   </div>
@@ -341,8 +340,6 @@ function paintInfo(ev,money){const name=ev.event_name||'Nochevieja 2026',parts=n
  $('i-time').textContent=ev.start_time||'22:00';$('i-place').textContent=ev.place||'Por confirmar';$('i-addr').textContent=ev.addr||'';
  $('i-map').innerHTML=ev.addr?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.addr)}" target="_blank" rel="noopener">Cómo llegar</a>`:'';
  $('i-end').textContent=ev.end_time?'Las '+ev.end_time:'Que aguante el cuerpo';
- $('i-pp').textContent=money?eur(money.per_person):'—';
- $('i-ppnote').textContent=money?(money.by_confirmed?`entre los ${money.people} confirmados`:`calculado para ${money.people}`):'';
  $('i-notes').textContent=[ev.notes||'',ev.pay_deadline?`Hay que pagar antes del ${fdate(ev.pay_deadline)}.`:''].filter(Boolean).join(' ');
 }
 // Prepara la página: 'ticket' (inicio y ficha) o 'wide' (gestión y recaudador)
@@ -433,8 +430,6 @@ async function viewHome(){nav('home');const v=layout('ticket');
     <p class="sub">${si.length} ${si.length===1?'confirmado':'confirmados'}${qz.length?` y ${qz.length} en duda`:''}${m.espera?`, ${m.espera} en lista de espera`:''}.</p>
     <div class="chips">${si.map(c=>`<span>${esc(c.name)}</span>`).join('')}${qz.map(c=>`<span class="q" title="En duda">${esc(c.name)}?</span>`).join('')}${d.coming.length?'':'<span class="q">Todavía nadie. Estrena tú la lista.</span>'}</div>
    </section>
-   <section class="card block" aria-labelledby="h-s"><h2 id="h-s">En qué se va el dinero</h2>
-    <p class="sub">Local, hielo, vasos y música los pagamos entre todos. Tú solo traes tu bebida. Al apuntarte te toca por sorteo a quién hacerle el Bizum.</p>${shoppingHtml(d.items,m)}</section>
    ${(ev.faq||[]).length?`<section class="card block faq" aria-labelledby="h-f"><h2 id="h-f">Preguntas frecuentes</h2>
     ${ev.faq.map(f=>`<details><summary>${esc(f.q)}</summary>${f.a?`<p>${esc(f.a)}</p>`:''}</details>`).join('')}
     ${ev.admin_contact?`<p class="sub" style="margin:10px 0 0">¿Otra duda? Pregunta a ${esc(ev.admin_contact)} o en el grupo.</p>`:''}</section>`:''}
@@ -573,7 +568,7 @@ function renderAdmin(){const v=$('below'),m=A.money,G=A.guests;
  ({gente:paneGente,recaudadores:paneCol,compra:paneCompra,datos:paneDatos})[tab]()}
 function summary(){const m=A.money,ev=A.event;
  return [`🎆 ${ev.event_name||'Nochevieja 2026'} 🎆`,`📍 ${ev.place||'Local por confirmar'}${ev.addr?' · '+ev.addr:''}`,`🕙 31 dic a las ${ev.start_time||'22:00'}`,ev.notes?'ℹ️ '+ev.notes:'','',
-  `Total: ${eur(m.total)} → ${eur(m.per_person)} cada uno (${m.people} personas)`,`Confirmados: ${m.si}${m.quiza?' (+'+m.quiza+' en duda)':''}${m.espera?' · '+m.espera+' en espera':''} · Han pagado: ${m.paid}`,
+  `Cada uno pone ${eur(m.per_person)} (lo veis en vuestra entrada)`,`Confirmados: ${m.si}${m.quiza?' (+'+m.quiza+' en duda)':''}${m.espera?' · '+m.espera+' en espera':''} · Han pagado: ${m.paid}`,
   ev.pay_deadline?`💸 Pagar antes del ${fdate(ev.pay_deadline)} a vuestro recaudador (lo veis en vuestra ficha)`:'💸 Cada uno paga a su recaudador (lo veis en vuestra ficha)','',`Apúntate o entra en tu ficha: ${base}`].filter((l,i,a)=>!(l===''&&a[i-1]==='')).join('\n')}
 async function act(fn,args){const msg=$('aMsg');msg.className='msg';msg.textContent='Guardando…';
  try{await rpc(fn,{p_pin:pin(),...args});A=await rpc('admin_state',{p_pin:pin()});paintInfo(A.event,A.money);renderAdmin();$('aMsg').className='msg ok';$('aMsg').textContent='Guardado.'}

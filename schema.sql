@@ -273,15 +273,14 @@ begin
 end $$;
 
 -- ======================= PÚBLICO =======================
+-- Sin importes ni lista de gastos: eso solo lo ven los gestores y cada uno en su entrada
 create or replace function public.public_info()
 returns json language sql stable security definer set search_path = public as $$
   select json_build_object(
     'event', public._event(),
-    'money', public._money(),
+    'money', (select json_build_object('si', m->'si', 'quiza', m->'quiza', 'espera', m->'espera', 'capacity', m->'capacity', 'spots_left', m->'spots_left') from (select public._money()::jsonb m) x),
     'coming', coalesce((select json_agg(json_build_object('name',name,'status',status) order by name)
-                        from guests where status in ('si','quiza')), '[]'::json),
-    'items', coalesce((select json_agg(json_build_object('name',name,'cat',cat,'q',q,'p',p,'done',done,'opt',opt) order by ord, name)
-                       from items), '[]'::json));
+                        from guests where status in ('si','quiza')), '[]'::json));
 $$;
 
 create or replace function public.signup(p_name text, p_phone text, p_status text, p_pay text, p_pin text)
@@ -337,7 +336,8 @@ returns json language sql stable security definer set search_path = public as $$
                                     'token',c.token,'has_pin',c.pin_hash is not null) order by c.created_at)
                             from guests c where c.invited_by = g.id), '[]'::json),
     'whatsapp_url', (select whatsapp_url from settings where id = 1),
-    'event', public._event(), 'money', public._money())
+    'event', public._event(),
+    'money', (select json_build_object('per_person', m->'per_person') from (select public._money()::jsonb m) x))
   from guests g where g.token = p_token;
 $$;
 
