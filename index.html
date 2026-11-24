@@ -62,23 +62,14 @@ a{color:var(--gold);text-underline-offset:3px}
 .cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:26px}
 
 /* ---------- vídeo de fondo ---------- */
-html{background:#1d0618}
-.bgvid{position:fixed;top:0;left:0;right:0;height:100vh;height:100lvh;z-index:-1;background:#1d0618 var(--poster,none) center top/cover no-repeat;transform:translateZ(0);will-change:transform;pointer-events:none}
-.bgvid video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;opacity:0;transition:opacity 1.2s ease}
+.bgvid{position:absolute;inset:0;z-index:0;background:#2a0a22 var(--poster,none) center/cover no-repeat;pointer-events:none;overflow:hidden}
+.bgvid video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.2s ease}
 .bgvid video.on{opacity:1}
-.bgshade{position:absolute;inset:0;background:linear-gradient(180deg,#1d061833 0%,#1d061855 35%,#1d0618b3 75%,#1d0618d9 100%)}
-html.has-vid body{background:transparent}
-html.has-vid .sky{background:linear-gradient(180deg,transparent 0%,transparent 70%,#1d061866 100%)}
+.bgshade{position:absolute;inset:0;background:linear-gradient(180deg,#1d061840 0%,#1d061855 45%,#1d0618b0 78%,var(--paper) 100%)}
+html.has-vid .sky{background:var(--paper)}
 html.has-vid .sky canvas{display:none}
-html.has-vid .card,html.has-vid .fact,html.has-vid .ticket .body,html.has-vid .stat{background:#2b0b24cc;-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);border-color:#ffffff1a}
-html.has-vid .ticket{background:transparent}
-html.has-vid .ticket .body{border-radius:0 0 24px 24px}
-html.has-vid .fact.money{background:var(--gold)}
 html.has-vid .hero h1{text-shadow:0 2px 24px #000a,0 0 50px #e5242f55}
 html.has-vid .when,html.has-vid .count span{text-shadow:0 1px 8px #000c}
-html.has-vid .ticket .body::before,html.has-vid .ticket .body::after{display:none}
-html.has-vid .ticket .stub::after{left:0;right:0}
-html.has-vid .note,html.has-vid footer{text-shadow:0 1px 8px #000}
 html.has-vid .count div{background:#1d061866;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 @media(prefers-reduced-motion:reduce){.bgvid video{display:none}}
 
@@ -342,8 +333,8 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 </style>
 </head>
 <body>
-<div class="bgvid" aria-hidden="true"><video id="bgv" muted loop playsinline preload="none" disablepictureinpicture></video><div class="bgshade"></div></div>
 <header class="sky" id="sky">
+  <div class="bgvid" aria-hidden="true"><video id="bgv" muted loop playsinline preload="none" disablepictureinpicture></video><div class="bgshade"></div></div>
   <canvas id="fw" aria-hidden="true"></canvas>
   <div class="wrap">
     <div class="top">
