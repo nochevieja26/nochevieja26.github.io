@@ -186,6 +186,11 @@ main{padding:0 0 60px}
 .lines li.tot{border:0;font-weight:800;font-size:17px}
 .lines small{color:var(--mute)}
 .callout{background:var(--card2);border-radius:16px;padding:16px 18px;margin-top:16px}
+.wajoin{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#0f3a24;border:2px solid #25d366;border-radius:16px;padding:14px 16px;margin:0 0 20px;box-shadow:0 0 24px #25d36633}
+.wajoin>div{flex:1 1 200px;display:grid;gap:2px}
+.wajoin b{font-size:17px;color:#fff}.wajoin span{font-size:14px;color:#cfeedd}
+.wajoin .btn{background:#25d366;color:#06301a;box-shadow:0 4px 0 #13763a;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+@media(max-width:560px){.wajoin .btn{width:100%;justify-content:center}}
 .callout.wa{background:#0f3a24;border:2px solid #1fa85566}
 .callout.wa .btn{background:#1fa855;box-shadow:0 4px 0 #13763a}
 .linkbox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}
@@ -656,11 +661,11 @@ async function viewMe(tok){
      :`<button class="btn green wide" type="button" id="claim" style="margin-top:18px">${cash?'Ya le he dado el dinero':'Ya he hecho el Bizum'}</button><p class="sub" style="margin:8px 0 0;font-size:14px;text-align:center">Así tu recaudador sabe que tiene que mirarlo.</p>`}`
   :`<p style="margin:0">Todavía no hay recaudadores. En cuanto los pongan, aquí verás a quién pagar.</p>`;
  const canPdf=ev.tickets_enabled&&(g.status==='si'||g.status==='quiza');
- v.innerHTML=`<div class="ticket"><div class="stub">${stub}</div><div class="body">${body}${canPdf?`<button class="btn2 wide" type="button" id="pdf" style="margin-top:18px">Descargar mi entrada (PDF)</button>`:''}</div></div>`;
+ const waBox=wa&&!out?`<div class="wajoin"><div><b>${isNew?'Último paso: entra al grupo de WhatsApp':'¿Ya estás en el grupo de WhatsApp?'}</b><span>Ahí avisamos de todo: cambios, pagos y lo que falta.</span></div>
+   <a class="btn" id="wa-join" href="${esc(wa)}" target="_blank" rel="noopener">${ICON_WA_BIG}Entrar al grupo</a></div>`:'';
+ v.innerHTML=`<div class="ticket"><div class="stub">${stub}</div><div class="body">${waBox}${body}${canPdf?`<button class="btn2 wide" type="button" id="pdf" style="margin-top:18px">Descargar mi entrada (PDF)</button>`:''}</div></div>`;
  const comp=d.companions||[];
  $('below').innerHTML=`<div class="narrow">
-  ${wa&&!out&&!waiting?`<div class="callout wa block"><h3 style="margin:0">${isNew?'Último paso: entra al grupo':'El grupo de la fiesta'}</h3><p class="sub" style="margin:4px 0 12px">Ahí avisamos de todo: cambios, pagos y lo que falta.</p>
-   <a class="btn wide" id="wa-join" href="${esc(wa)}" target="_blank" rel="noopener">Unirme al grupo de WhatsApp</a></div>`:''}
   ${!out?`<section class="card block"><h2>Que no se te olvide</h2><p class="sub" style="margin:0">Guárdalo en el calendario del móvil.</p>${calButtons(ev)}</section>`:''}
   ${!out&&!waiting&&ev.signups_open?`<section class="card block" aria-labelledby="h-inv"><h2 id="h-inv">Invita a tus amigos</h2>
    <p class="sub">Pásales tu enlace: quien se apunte desde él quedará apuntado de tu parte.${d.brought?` Ya has traído a ${d.brought}.`:''}</p>
@@ -789,6 +794,7 @@ function summary(){const m=A.money,ev=A.event;
 async function act(fn,args){const msg=$('aMsg');msg.className='msg';msg.textContent='Guardando…';
  try{await rpc(fn,{p_pin:pin(),...args});A=await rpc('admin_state',{p_pin:pin()});paintInfo(A.event,A.money);renderAdmin();$('aMsg').className='msg ok';$('aMsg').textContent='Guardado.'}
  catch(err){msg.className='msg err';msg.textContent=err.message}}
+const ICON_WA_BIG='<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 2a8 8 0 1 1-4.1 14.9l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 0 1 12 4Z"/></svg>';
 const ICON_WA='<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 2a8 8 0 1 1-4.1 14.9l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 0 1 12 4Zm-3.2 3.8c-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.7s1.2 3.2 1.3 3.4c.2.2 2.3 3.6 5.6 4.9 2.8 1.1 3.3.9 3.9.8.6-.1 2-.8 2.2-1.6.3-.8.3-1.5.2-1.6-.1-.1-.3-.2-.6-.4l-2-1c-.3-.1-.5-.1-.7.1l-.9 1.2c-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.4.1-.6l.5-.6.3-.5c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.6-.7-.6h-.6Z"/></svg>';
 const ICON_LINK='<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>';
 const STATUS_ADMIN={si:'Sí',quiza:'Quizá',espera:'En espera',no:'No'};
