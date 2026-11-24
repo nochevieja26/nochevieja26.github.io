@@ -258,7 +258,7 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 /* Compra y gastos en móvil: cada cosa es una tarjeta ordenada */
 @media(max-width:700px){
  .items-t tbody{display:grid;gap:12px}
- .items-t tr{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-areas:"name name name name name del" "q q p p sp sp" "cat cat cat who who who" "done done opt opt prev prev";gap:10px;padding:14px;background:var(--card2);border:0;border-radius:16px}
+ .items-t tr{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-areas:"name name name name name del" "q q p p sp sp" "cat cat cat who who who" "done done done opt opt opt" "prev prev prev prev prev prev";gap:10px;padding:14px;background:var(--card2);border:0;border-radius:16px}
  .items-t td{display:grid;gap:4px;align-content:start;justify-content:stretch;padding:0;grid-column:auto;grid-row:auto}
  .items-t td::before{font-size:12px;font-weight:600}
  .items-t td input,.items-t td select{max-width:none!important;width:100%!important;min-height:44px;background:var(--card);text-align:start}
@@ -266,14 +266,15 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
  .items-t td:nth-child(2){grid-area:cat}
  .items-t td:nth-child(3){grid-area:q}
  .items-t td:nth-child(4){grid-area:p}
- .items-t td:nth-child(5){grid-area:prev;align-content:center;justify-items:end}
+ .items-t td:nth-child(5){grid-area:prev;display:flex;justify-content:space-between;align-items:baseline;border-top:2px dotted var(--line);padding-top:10px}
+ .items-t td:nth-child(5)::before{font-size:14px}
  .items-t td:nth-child(5) b{font:700 18px Unbounded,sans-serif}
  .items-t td:nth-child(6){grid-area:sp}
  .items-t td:nth-child(7){grid-area:who}
  .items-t td:nth-child(8){grid-area:done}
  .items-t td:nth-child(9){grid-area:opt}
  .items-t td:nth-child(10){grid-area:del;justify-items:end;align-self:center}
- .items-t td:nth-child(8),.items-t td:nth-child(9){display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:2px;background:var(--card);border-radius:12px;padding:0 10px 0 0}
+ .items-t td:nth-child(8),.items-t td:nth-child(9){display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:4px;background:var(--card);border-radius:12px;padding:0 12px 0 2px;min-height:48px;white-space:nowrap;overflow:hidden}
  .items-t td:nth-child(8)::before,.items-t td:nth-child(9)::before{font-size:14px;color:var(--ink)}
  .items-t .tick{min-width:40px;min-height:44px}
 }
