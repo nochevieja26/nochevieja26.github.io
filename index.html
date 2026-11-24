@@ -57,6 +57,12 @@ a{color:var(--gold);text-underline-offset:3px}
 .when{margin:18px 0 0;font-size:clamp(17px,2.4vw,20px);font-weight:600;color:#f3d9e6}
 .count{display:flex;justify-content:center;gap:clamp(8px,2.6vw,18px);margin-top:22px}
 .count div{display:grid;justify-items:center;background:#ffffff14;border:1px solid #ffffff26;border-radius:16px;padding:10px 0 8px;width:clamp(68px,18vw,92px)}
+.goal{width:min(440px,100%);margin:22px auto 0;text-align:center}
+.goal-t{margin:0 0 8px;font-size:16px;text-shadow:0 1px 8px #000c}
+.goal-t b{font-family:Unbounded,sans-serif;color:var(--gold)}
+.goal-bar{height:12px;border-radius:999px;background:#ffffff1f;border:1px solid #ffffff2e;overflow:hidden}
+.goal-bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--red),var(--gold));transition:width 1.2s cubic-bezier(.2,.8,.2,1)}
+.goal-s{margin:8px 0 0;font-size:14px;opacity:.8;text-shadow:0 1px 8px #000c}
 .count b{font:600 clamp(24px,6vw,36px)/1.1 Unbounded,sans-serif;font-variant-numeric:tabular-nums}
 .count span{font-size:13px;color:#e8c7d7;font-weight:600}
 .cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:26px}
@@ -285,6 +291,16 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 .lrow time{font-variant-numeric:tabular-nums;font-size:14px;opacity:.75;padding-top:1px}
 .lrow span{overflow-wrap:anywhere}
 .lrow small{display:block;font-size:13px;opacity:.65;margin-top:2px}
+.spend h3{font-size:15px;margin:0 0 10px}
+.sp-cols{display:grid;grid-template-columns:1fr 1.3fr;gap:24px;margin-top:14px}
+@media(max-width:700px){.sp-cols{grid-template-columns:1fr}}
+.sp{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.sp-h{display:flex;justify-content:space-between;gap:10px;font-size:14px;margin-bottom:4px}
+.sp-h>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.sp-h small{opacity:.6}.sp-h em{font-style:normal;opacity:.7;display:inline-block;min-width:38px;text-align:right}
+.sp-b{height:8px;border-radius:999px;background:#ffffff14;overflow:hidden}
+.sp-b i{display:block;height:100%;border-radius:inherit;background:var(--gold)}
+.sp li:first-child .sp-b i{background:linear-gradient(90deg,var(--red),var(--gold))}
 .pcard{background:var(--card2);border-radius:18px;padding:14px 16px;display:grid;gap:12px}
 .pcard.out{opacity:.6}
 .phead{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}
@@ -372,6 +388,11 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
       <div class="count" aria-label="Cuenta atrás hasta las campanadas">
         <div><b id="cd-d">--</b><span>días</span></div><div><b id="cd-h">--</b><span>horas</span></div>
         <div><b id="cd-m">--</b><span>min</span></div><div><b id="cd-s">--</b><span>seg</span></div>
+      </div>
+      <div class="goal hidden" id="goal">
+        <p class="goal-t"><b id="goal-n">0</b> <span id="goal-w">apuntados</span>. El objetivo es llegar a <b id="goal-max">50</b></p>
+        <div class="goal-bar" role="progressbar" id="goal-bar" aria-valuemin="0"><i id="goal-fill"></i></div>
+        <p class="goal-s" id="goal-s">Cuantos más seamos, menos pone cada uno.</p>
       </div>
     </div>
   </div>
@@ -485,6 +506,11 @@ function paintInfo(ev,money){const name=ev.event_name||'Nochevieja 2026',parts=n
  $('i-end').textContent=ev.end_time?'Las '+ev.end_time:'Que aguante el cuerpo';
  const pp=ev.price_hint||(money&&money.per_person?eur(money.per_person):'');
  $('i-money').classList.toggle('hidden',!pp);$('i-pp').textContent=pp;$('i-ppnote').textContent=ev.price_hint?'precio orientativo':'aprox., según cuánta gente venga';
+ const goal=money&&money.capacity,have=money?(money.si||0):0;$('goal').classList.toggle('hidden',!goal);
+ if(goal){$('goal-n').textContent=have;$('goal-w').textContent=have===1?'apuntado':'apuntados';$('goal-max').textContent=goal;const pc=Math.min(100,Math.round(have/goal*100));
+  $('goal-bar').setAttribute('aria-valuemax',goal);$('goal-bar').setAttribute('aria-valuenow',have);$('goal-bar').setAttribute('aria-label',`${have} de ${goal} personas`);
+  requestAnimationFrame(()=>{$('goal-fill').style.width=pc+'%'});
+  $('goal-s').textContent=have>=goal?'¡Objetivo conseguido! Ya estamos todos.':`Faltan ${goal-have}. Cuantos más seamos, menos pone cada uno.`}
  $('i-notes').textContent=[ev.notes||'',ev.pay_deadline&&!PAY_LATER?`Hay que pagar antes del ${fdate(ev.pay_deadline)}.`:''].filter(Boolean).join(' ');
 }
 // Prepara la página: 'ticket' (inicio y ficha) o 'wide' (gestión y recaudador)
@@ -954,8 +980,17 @@ async function startScan(file){if(!file)return;scan={state:'reading',progress:0}
  catch(err){scan={state:'error',error:err.message||'Error al leer la imagen.'}}
  if(tab==='compra')paneCompra()}
 
+function spendHtml(I){const cost=i=>i.spent!=null&&i.spent!==''&&num(i.spent)>0?num(i.spent):num(i.q)*num(i.p);
+ const rows=I.filter(i=>!i.opt).map(i=>({n:i.name,c:i.cat||'Otros',v:cost(i),real:i.spent!=null&&num(i.spent)>0})).filter(r=>r.v>0).sort((a,b)=>b.v-a.v);
+ const tot=rows.reduce((a,r)=>a+r.v,0);if(!tot)return '';
+ const byCat={};rows.forEach(r=>byCat[r.c]=(byCat[r.c]||0)+r.v);const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+ const top=rows.slice(0,8),rest=rows.slice(8).reduce((a,r)=>a+r.v,0);
+ const bar=(label,v,sub)=>{const pc=v/tot*100;return `<li><div class="sp-h"><span>${esc(label)}${sub?` <small>${sub}</small>`:''}</span><span><b>${eur(v)}</b> <em>${pc<1?'<1':Math.round(pc)} %</em></span></div><div class="sp-b"><i style="width:${Math.max(pc,1).toFixed(1)}%"></i></div></li>`};
+ return `<section class="card spend"><h2>Dónde se va el dinero</h2><p class="sub">${eur(tot)} sin contar los extras. Usa lo gastado de verdad cuando está puesto y, si no, lo previsto.</p>
+  <div class="sp-cols"><div><h3>Por tipo</h3><ul class="sp">${cats.map(([c,v])=>bar(c,v)).join('')}</ul></div>
+  <div><h3>Lo que más pesa</h3><ul class="sp">${top.map(r=>bar(r.n,r.v,r.real?'':'previsto')).join('')}${rest?bar(`Resto (${rows.length-8})`,rest):''}</ul></div></div></section>`}
 function paneCompra(){const I=A.items,m=A.money;
- $('pane').innerHTML=`${scanHtml()}<section class="card"><div class="row" style="justify-content:space-between"><h2>Compra y gastos</h2>
+ $('pane').innerHTML=`${scanHtml()}${spendHtml(I)}<section class="card"><div class="row" style="justify-content:space-between"><h2>Compra y gastos</h2>
    <div class="row" style="gap:8px"><button class="btn2 sm" type="button" id="selMode">${selItems?'Cancelar selección':'Seleccionar'}</button><label class="btn green sm" style="cursor:pointer">Escanear ticket<input type="file" id="scanFile" accept="image/*" hidden></label></div></div>
    ${selItems?`<div class="selbar"><label class="row" style="gap:8px;font-weight:700"><input type="checkbox" id="selAll"${I.length&&selItems.size===I.length?' checked':''}> Todas</label><span>${selItems.size} seleccionada${selItems.size===1?'':'s'}</span><button class="btn sm" type="button" id="selDel"${selItems.size?'':' disabled'}>Borrar seleccionadas</button></div>`:''}<p class="sub">«€/ud» es lo previsto y sirve para calcular lo que pone cada uno. Cuando compréis algo, apunta en «Gastado» lo que costó de verdad: así sale el bote disponible. Marca «Extra» para lo que solo se compra si sobra dinero.</p>
   <div class="scroll"><table class="stack items-t"><thead><tr><th>Qué</th><th>Tipo</th><th class="num">Cant.</th><th class="num">€/ud</th><th class="num">Previsto</th><th class="num">Gastado</th><th>Quién</th><th>Comprado</th><th>Extra</th><th></th></tr></thead><tbody>
