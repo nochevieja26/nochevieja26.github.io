@@ -120,6 +120,8 @@ label.f small,.f small{color:var(--mute);font-weight:500;font-size:14px}
 .msg{font-size:15px;color:var(--mute);min-height:1.4em;margin:0}
 .msg.err{color:var(--red2);font-weight:600}
 .msg.ok{color:#9be05a;font-weight:600}
+.ferr{display:block;color:var(--red2);font-size:14px;font-weight:600;margin:6px 0 0}
+input.bad{border-color:var(--red2)!important}
 .warn{color:var(--red2);font-size:14px;margin:4px 0 0;font-weight:500}
 .sub{color:var(--mute);margin:0 0 14px;font-size:15px}
 .pill{display:inline-block;font-size:14px;font-weight:700;padding:4px 12px;border-radius:99px;max-width:100%}
@@ -377,6 +379,24 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 {
 /* ================= utilidades ================= */
 const $=id=>document.getElementById(id);
+/* ---- teléfonos: móvil español (6/7 + 8 cifras, con o sin +34) o extranjero con + o 00 ---- */
+function phoneErr(v,bizum){const t=(v||'').trim(),d=t.replace(/\D/g,'');if(!t)return '';
+ const es=d.replace(/^(0034|34)(?=\d{9}$)/,'');
+ if(/^[67]\d{8}$/.test(es))return '';
+ if(bizum)return 'Tiene que ser un móvil español de 9 cifras que empiece por 6 o 7.';
+ if(/^(\+|00)/.test(t)&&!/^(00)?34/.test(d)){const n=d.replace(/^00/,'').length;if(n>=8&&n<=15)return ''}
+ if(/^[89]\d{8}$/.test(es))return 'Parece un fijo. Pon un móvil (empieza por 6 o 7).';
+ if(/^\d+$/.test(es)&&es.length<9)return `Faltan cifras: llevas ${es.length} de 9.`;
+ if(/^\d+$/.test(es)&&es.length>9&&!/^(\+|00)/.test(t))return 'Sobran cifras. Si es de otro país, empieza por + y el prefijo.';
+ return 'Ese teléfono no es válido. Pon un móvil de 9 cifras o, si es de otro país, empieza por + y el prefijo.'}
+function phoneFmt(v){const d=(v||'').replace(/\D/g,'').replace(/^(0034|34)(?=\d{9}$)/,'');return /^[67]\d{8}$/.test(d)&&!/^\s*(\+|00)(?!34)/.test(v)?d.replace(/(\d{3})(\d{2})(\d{2})(\d{2})/,'$1 $2 $3 $4'):v.trim()}
+function phoneCheck(el,show){const bizum=el.placeholder==='Número de Bizum',
+ msg=el.value.trim()?phoneErr(el.value,bizum):'';el.setCustomValidity(msg);el.classList.toggle('bad',!!msg&&show);
+ let s=el.nextElementSibling;if(!s||!s.classList.contains('ferr')){if(!show||!msg)return;s=document.createElement('span');s.className='ferr';s.setAttribute('role','alert');el.after(s)}
+ s.textContent=show?msg:'';if(!s.textContent)s.remove()}
+document.addEventListener('input',e=>{const el=e.target;if(el.type==='tel')phoneCheck(el,el.classList.contains('bad'))},true);
+document.addEventListener('blur',e=>{const el=e.target;if(el.type!=='tel'||!el.value.trim())return;const f=phoneFmt(el.value);if(!phoneErr(f)&&f!==el.value)el.value=f;phoneCheck(el,true)},true);
+document.addEventListener('invalid',e=>{if(e.target.type==='tel')phoneCheck(e.target,true)},true);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isFinite(n)&&n>=0?n:0};
 const eur=n=>{n=Number(n)||0;return n.toLocaleString('es-ES',{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2})+' €'};

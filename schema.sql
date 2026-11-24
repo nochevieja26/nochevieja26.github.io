@@ -183,6 +183,15 @@ returns text language sql immutable as $$
               else regexp_replace(coalesce(p,''),'\D','','g') end;
 $$;
 
+-- Teléfono válido: móvil español (9 cifras que empiezan por 6 o 7, con o sin +34)
+-- o número extranjero escrito con + o 00 y el prefijo (8 a 15 cifras)
+create or replace function public._phone_ok(p text)
+returns boolean language sql immutable as $$
+  select public._phone_key(p) ~ '^[67][0-9]{8}$'
+      or (trim(coalesce(p,'')) ~ '^(\+|00)' and regexp_replace(p,'\D','','g') !~ '^(00)?34'
+          and char_length(regexp_replace(regexp_replace(p,'\D','','g'),'^00','')) between 8 and 15);
+$$;
+
 -- Nombre de quien ya tiene ese teléfono (o null). p_except: no contar a esta persona
 create or replace function public._phone_owner(p_phone text, p_except uuid)
 returns text language sql stable security definer set search_path = public as $$
@@ -292,8 +301,8 @@ returns uuid language plpgsql volatile security definer set search_path = public
 declare t uuid; st text := case when p_status in ('si','quiza','no') then p_status else 'si' end;
 begin
   if char_length(trim(coalesce(p_name,''))) = 0 then raise exception 'Falta el nombre'; end if;
-  if char_length(public._phone_key(p_phone)) < 9 then
-    raise exception 'Pon un teléfono válido. Si no quiere darlo, que hable con un gestor.';
+  if not public._phone_ok(p_phone) then
+    raise exception 'Ese teléfono no es válido. Pon un móvil de 9 cifras (empieza por 6 o 7). Si es de otro país, empieza por + y el prefijo.';
   end if;
   if p_pin is not null and p_pin !~ '^[0-9]{4}$' then raise exception 'El PIN tiene que ser de 4 cifras'; end if;
   if not public._signups_open() then raise exception 'Las inscripciones están cerradas. Habla con un gestor.'; end if;
@@ -344,7 +353,7 @@ create or replace function public.login(p_phone text, p_pin text)
 returns json language plpgsql volatile security definer set search_path = public, extensions as $$
 declare g guests; bad constant text := 'Teléfono o PIN incorrectos';
 begin
-  if char_length(public._phone_key(p_phone)) < 9 or coalesce(p_pin,'') !~ '^[0-9]{4}$' then
+  if char_length(public._phone_key(p_phone)) < 8 or coalesce(p_pin,'') !~ '^[0-9]{4}$' then
     return json_build_object('error', bad);
   end if;
   select * into g from guests where phone_key = public._phone_key(p_phone) for update;
@@ -393,8 +402,8 @@ begin
   select * into g from guests where token = p_token;
   if g.id is null then raise exception 'Enlace no válido'; end if;
   if char_length(trim(coalesce(p_name,''))) = 0 then raise exception 'Falta el nombre'; end if;
-  if char_length(public._phone_key(p_phone)) < 9 then
-    raise exception 'Pon un teléfono válido. Si no quieres darlo, habla con un gestor.';
+  if not public._phone_ok(p_phone) then
+    raise exception 'Ese teléfono no es válido. Pon un móvil de 9 cifras (empieza por 6 o 7). Si es de otro país, empieza por + y el prefijo.';
   end if;
   if public._phone_owner(p_phone, g.id) is not null then
     raise exception 'Ese teléfono ya lo tiene otra persona de la lista. Habla con un gestor.';
@@ -544,6 +553,7 @@ declare e text := public._pin_error(p_pin); r uuid; dup text;
 begin
   if e is not null then return json_build_object('error', e); end if;
   if char_length(trim(coalesce(p_name,''))) = 0 then return json_build_object('error','Falta el nombre'); end if;
+  if trim(coalesce(p_phone,'')) <> '' and not public._phone_ok(p_phone) then return json_build_object('error','Ese teléfono no es válido. Pon un móvil de 9 cifras (empieza por 6 o 7). Si es de otro país, empieza por + y el prefijo.'); end if;
   dup := public._phone_owner(p_phone, p_id);
   if dup is not null then return json_build_object('error','Ese teléfono ya lo tiene ' || dup); end if;
   if p_id is null then
@@ -582,6 +592,9 @@ declare e text := public._pin_error(p_pin); r uuid; n int;
 begin
   if e is not null then return json_build_object('error', e); end if;
   if char_length(trim(coalesce(p_name,''))) = 0 then return json_build_object('error','Falta el nombre'); end if;
+  if trim(coalesce(p_phone,'')) <> '' and public._phone_key(p_phone) !~ '^[67][0-9]{8}$' then
+    return json_build_object('error','El número de Bizum tiene que ser un móvil español de 9 cifras (empieza por 6 o 7).');
+  end if;
   if p_id is null then
     if (select count(*) from collectors) >= 10 then return json_build_object('error','Máximo 10 recaudadores'); end if;
     insert into collectors (name, phone, active) values (left(trim(p_name),40), left(trim(coalesce(p_phone,'')),30), coalesce(p_active,true))
