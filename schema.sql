@@ -36,6 +36,7 @@ alter table public.settings add column if not exists capacity int;            --
 alter table public.settings add column if not exists signup_deadline date;    -- último día para apuntarse (incluido)
 alter table public.settings add column if not exists pay_deadline date;       -- último día para pagar
 alter table public.settings add column if not exists faq jsonb not null default '[]';  -- preguntas frecuentes [{q,a}]
+alter table public.settings add column if not exists tickets_enabled boolean not null default false;  -- botón «Descargar mi entrada (PDF)»
 alter table public.settings add column if not exists price_hint text not null default '';  -- precio orientativo que se enseña en el inicio (vacío = el calculado)
 update public.settings set faq = '[
  {"q":"¿Qué tengo que traer?","a":"Solo tu bebida. El local, el hielo, los vasos, las chuches y la música los pagamos entre todos."},
@@ -202,7 +203,7 @@ returns json language sql stable security definer set search_path = public as $$
     'notes',notes,'people_override',people_override,'has_pin',admin_pin_hash is not null,
     'admin_contact',admin_contact,'capacity',capacity,
     'signup_deadline',signup_deadline,'pay_deadline',pay_deadline,'signups_open',public._signups_open(),
-    'collectors',(select count(*) from collectors where active),'faq',faq,'price_hint',price_hint)
+    'collectors',(select count(*) from collectors where active),'faq',faq,'price_hint',price_hint,'tickets_enabled',tickets_enabled)
   from settings where id = 1;
 $$;
 
@@ -620,6 +621,7 @@ begin
     notes      = left(coalesce(p->>'notes', notes),400),
     admin_contact = left(coalesce(p->>'admin_contact', admin_contact),120),
     price_hint = left(trim(coalesce(p->>'price_hint', price_hint)),40),
+    tickets_enabled = case when p ? 'tickets_enabled' then coalesce((p->>'tickets_enabled')::boolean, false) else tickets_enabled end,
     whatsapp_url  = case when p ? 'whatsapp_url' then split_part(trim(p->>'whatsapp_url'),'?',1) else whatsapp_url end,
     people_override = case when p ? 'people_override' then nullif(p->>'people_override','')::int else people_override end,
     capacity        = case when p ? 'capacity' then nullif(p->>'capacity','')::int else capacity end,

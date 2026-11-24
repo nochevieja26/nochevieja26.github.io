@@ -436,6 +436,60 @@ async function viewHome(){nav('home');const v=layout('ticket');
  if(location.hash==='#apuntarme'||location.hash==='#entrar')setTimeout(()=>$('apuntarme')?.scrollIntoView({behavior:'smooth'}),50);
 }
 
+/* ================= entrada en PDF ================= */
+function loadScript(src){return new Promise((ok,ko)=>{if(window.jspdf)return ok();const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>ko(new Error('No se ha podido cargar el generador de PDF. Prueba otra vez.'));document.head.appendChild(s)})}
+function ticketCode(tok){return String(tok||'').replace(/-/g,'').slice(0,6).toUpperCase()}
+// Dibuja la entrada en un canvas de 1800×760 px (se imprime a 180×76 mm)
+async function drawTicket(t){
+ try{await Promise.all(['800 40px Unbounded','500 40px Unbounded','700 40px Unbounded','600 20px Figtree','700 20px Figtree'].map(f=>document.fonts.load(f)))}catch(e){}
+ const W=1800,H=760,S=1350,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+ const U=(w,px)=>`${w} ${px}px Unbounded, Figtree, sans-serif`,F=(w,px)=>`${w} ${px}px Figtree, sans-serif`;
+ const fit=(txt,w,px,max)=>{x.font=U(w,px);while(x.measureText(txt).width>max&&px>20){px-=2;x.font=U(w,px)}return px};
+ // forma de entrada con esquinas redondeadas y muescas en el troquel
+ x.save();x.beginPath();x.roundRect(0,0,W,H,44);x.clip();
+ const g=x.createRadialGradient(W*.62,-80,40,W*.62,-80,1300);g.addColorStop(0,'#5a1540');g.addColorStop(.6,'#2a0a22');g.addColorStop(1,'#1d0618');
+ x.fillStyle=g;x.fillRect(0,0,W,H);
+ let r=26;const R=()=>(r=r*16807%2147483647)/2147483647;
+ for(let i=0;i<120;i++){x.globalAlpha=.2+R()*.5;x.fillStyle='#fff';x.beginPath();x.arc(R()*S,R()*H,R()<.15?2.6:1.5,0,7);x.fill()}
+ x.globalAlpha=1;
+ const burst=(cx,cy,k,col)=>{x.strokeStyle=col;x.fillStyle=col;x.lineCap='round';x.lineWidth=5*k;for(let a=0;a<360;a+=20){const q=a*Math.PI/180,sx=Math.sin(q),cy2=-Math.cos(q);x.beginPath();x.moveTo(cx+sx*26*k,cy+cy2*26*k);x.lineTo(cx+sx*80*k,cy+cy2*80*k);x.stroke();x.beginPath();x.arc(cx+sx*94*k,cy+cy2*94*k,5*k,0,7);x.fill()}};
+ x.globalAlpha=.85;burst(1160,150,1.1,'#ffc93a');burst(1010,90,.55,'#ff5a63');burst(1230,370,.5,'#5fae1e');x.globalAlpha=1;
+ // parte derecha roja
+ x.fillStyle='#e5242f';x.fillRect(S,0,W-S,H);
+ x.restore();
+ // muescas y línea troquelada
+ x.globalCompositeOperation='destination-out';[[S,0],[S,H]].forEach(([a,b])=>{x.beginPath();x.arc(a,b,34,0,7);x.fill()});x.globalCompositeOperation='source-over';
+ x.setLineDash([16,14]);x.strokeStyle='#ffffff';x.lineWidth=4;x.beginPath();x.moveTo(S,58);x.lineTo(S,H-58);x.stroke();x.setLineDash([]);
+ // título
+ const L=90;x.textBaseline='alphabetic';
+ x.fillStyle='#fff7ea';x.font=U(800,128);x.shadowColor='#e5242f88';x.shadowBlur=40;x.fillText('Nochevieja',L,205);x.shadowBlur=0;
+ x.fillStyle='#ffc93a';x.font=U(500,74);try{x.letterSpacing='14px'}catch(e){}x.fillText('2026',L+4,292);try{x.letterSpacing='0px'}catch(e){}
+ // nombre
+ x.fillStyle='#cfaabd';x.font=F(600,30);x.fillText('Entrada a nombre de',L,395);
+ x.fillStyle='#fff7ea';const np=fit(t.name,700,66,S-L-80);x.font=U(700,np);x.fillText(t.name,L,465);
+ // datos
+ const cols=[['Fecha','31 dic 2026'],['Hora',t.time||'22:00'],['Lugar',t.place||'Por confirmar']];
+ let cx=L;cols.forEach(([k,v],i)=>{x.fillStyle='#cfaabd';x.font=F(600,26);x.fillText(k,cx,568);x.fillStyle='#fff7ea';const max=i===2?S-cx-70:300;const p=fit(v,700,40,max);x.font=U(700,p);x.fillText(v,cx,618);cx+=i===0?330:250});
+ if(t.addr){x.fillStyle='#cfaabd';x.font=F(600,26);let a=t.addr;while(x.measureText(a).width>S-L-70&&a.length>4)a=a.slice(0,-2);x.fillText(a===t.addr?a:a+'…',L,680)}
+ // parte troquelada
+ const C=S+(W-S)/2;x.textAlign='center';
+ x.fillStyle='#ffe2e2';x.font=F(700,28);x.fillText('Entrada nº',C,130);
+ x.fillStyle='#ffffff';x.font=U(800,56);x.fillText(t.code,C,200);
+ x.fillStyle='#ffe2e2';x.font=F(700,28);x.fillText('Aportación',C,300);
+ x.fillStyle='#ffffff';x.font=U(800,64);x.fillText(t.amount,C,372);
+ // sello
+ x.save();x.translate(C,530);x.rotate(-.16);const st=t.paid?'Pagada':'Pendiente de pago',sp=t.paid?52:30;x.font=U(800,sp);const sw=x.measureText(st).width+56;
+ x.strokeStyle=t.paid?'#ffc93a':'#ffffff';x.fillStyle=t.paid?'#ffc93a':'#ffffff';x.lineWidth=7;x.beginPath();x.roundRect(-sw/2,-sp*.95,sw,sp*1.65,18);x.stroke();x.fillText(st,0,sp*.32);x.restore();
+ x.fillStyle='#ffe2e2';x.font=F(600,24);x.fillText(location.host,C,H-60);x.textAlign='left';
+ return c}
+async function downloadTicket(t,btn){const o=btn.textContent;btn.disabled=true;btn.textContent='Preparando tu entrada…';
+ try{await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js');const c=await drawTicket(t);
+  const pdf=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:[76,180]});
+  pdf.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,180,76);pdf.setProperties({title:'Entrada Nochevieja 2026 · '+t.name});
+  pdf.save('entrada-nochevieja-'+t.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.pdf');
+  btn.textContent='¡Descargada!';setTimeout(()=>{btn.textContent=o;btn.disabled=false},2000)}
+ catch(err){btn.textContent=o;btn.disabled=false;alert(err.message||'No se ha podido crear el PDF.')}}
+
 /* ================= vista: mi entrada ================= */
 async function viewMe(tok){
  const d=await rpc('me',{p_token:tok});
@@ -459,7 +513,8 @@ async function viewMe(tok){
     ${g.claimed?`<p class="msg ok" style="margin-top:16px">Avisado. Cuando lo compruebe, aquí saldrá el sello de pagado.</p><button class="ghost" type="button" id="unclaim" style="padding:0">Me he equivocado, aún no he pagado</button>`
      :`<button class="btn green wide" type="button" id="claim" style="margin-top:18px">${cash?'Ya le he dado el dinero':'Ya he hecho el Bizum'}</button><p class="sub" style="margin:8px 0 0;font-size:14px;text-align:center">Así tu recaudador sabe que tiene que mirarlo.</p>`}`
   :`<p style="margin:0">Todavía no hay recaudadores. En cuanto los pongan, aquí verás a quién pagar.</p>`;
- v.innerHTML=`<div class="ticket"><div class="stub">${stub}</div><div class="body">${body}</div></div>`;
+ const canPdf=ev.tickets_enabled&&(g.status==='si'||g.status==='quiza');
+ v.innerHTML=`<div class="ticket"><div class="stub">${stub}</div><div class="body">${body}${canPdf?`<button class="btn2 wide" type="button" id="pdf" style="margin-top:18px">Descargar mi entrada (PDF)</button>`:''}</div></div>`;
  const comp=d.companions||[];
  $('below').innerHTML=`<div class="narrow">
   ${wa&&!out&&!waiting?`<div class="callout wa block"><h3 style="margin:0">${isNew?'Último paso: entra al grupo':'El grupo de la fiesta'}</h3><p class="sub" style="margin:4px 0 12px">Ahí avisamos de todo: cambios, pagos y lo que falta.</p>
@@ -495,6 +550,7 @@ async function viewMe(tok){
  $('claim')&&$('claim').addEventListener('click',async()=>{try{await rpc('claim_paid',{p_token:tok,p_on:true});await reload()}catch(err){alert(err.message)}});
  $('unclaim')&&$('unclaim').addEventListener('click',async()=>{try{await rpc('claim_paid',{p_token:tok,p_on:false});await reload()}catch(err){alert(err.message)}});
  $('me-copy').addEventListener('click',e=>copy(link,e.target));
+ $('pdf')&&$('pdf').addEventListener('click',e=>downloadTicket({name:g.name,code:ticketCode(tok),amount:eur(m.per_person),paid:g.paid,time:ev.start_time,place:ev.place,addr:ev.addr},e.currentTarget));
  $('pin-form').addEventListener('submit',async e=>{e.preventDefault();const msg=$('pin-msg');
   try{await rpc('set_pin',{p_token:tok,p_pin:$('p-pin').value});await reload('pin-msg','PIN guardado. Ya puedes entrar con tu teléfono y este PIN.',true)}catch(err){msg.className='msg err';msg.textContent=err.message}});
  $('me-form').addEventListener('submit',async e=>{e.preventDefault();$('m-go').disabled=true;$('m-msg').className='msg';$('m-msg').textContent='Guardando…';
@@ -663,6 +719,7 @@ function paneDatos(){const ev=A.event,fixed=ev.people_override!=null;
    <label class="f">Nota para todos<textarea id="e-notes" maxlength="400">${esc(ev.notes)}</textarea></label>
    <label class="f">Contacto de un gestor <small>Sale para quien no quiera dar su teléfono o haya olvidado el PIN, p. ej. «Juan · 600 000 000»</small><input type="text" id="e-contact" maxlength="120" value="${esc(ev.admin_contact)}"></label>
    <label class="f">Enlace del grupo de WhatsApp <small>Solo lo ve quien ya se ha apuntado, en su ficha</small><input type="url" id="e-wa" maxlength="200" value="${esc(A.whatsapp_url)}" placeholder="https://chat.whatsapp.com/…"></label>
+   <label class="row" style="font-weight:700;gap:10px;background:var(--card2);padding:12px 14px;border-radius:14px"><input type="checkbox" id="e-pdf"${ev.tickets_enabled?' checked':''}> Dejar que cada uno descargue su entrada en PDF</label>
    <fieldset style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><legend style="font-weight:600;padding:0 6px">Repartir el gasto</legend>
     <label class="row"><input type="radio" name="div" value="conf"${fixed?'':' checked'}> Entre los confirmados (${A.money.si})</label>
     <label class="row" style="margin-top:8px"><input type="radio" name="div" value="fixed"${fixed?' checked':''}> Entre un número fijo: <input type="number" id="e-people" min="1" max="500" value="${esc(ev.people_override??35)}" style="width:96px" aria-label="Número de personas"></label></fieldset>
@@ -674,7 +731,7 @@ function paneDatos(){const ev=A.event,fixed=ev.people_override!=null;
    <form class="stack-form" id="pForm"><label class="f">PIN nuevo<input type="password" id="p-new" minlength="6" required autocomplete="new-password"></label>
    <label class="f">Repítelo<input type="password" id="p-new2" minlength="6" required autocomplete="new-password"></label><button class="btn2" type="submit">Cambiar PIN</button><p class="msg" id="pMsg"></p></form></section></div></div>`;
  $('sForm').addEventListener('submit',e=>{e.preventDefault();const f=document.querySelector('input[name=div]:checked').value==='fixed',cap=$('e-cap').value.trim();
-  act('admin_settings_save',{p:{event_name:$('e-name').value,start_time:$('e-start').value,end_time:$('e-end').value,place:$('e-place').value,addr:$('e-addr').value,pay_how:$('e-payhow').value,notes:$('e-notes').value,admin_contact:$('e-contact').value,price_hint:$('e-price').value,whatsapp_url:$('e-wa').value,
+  act('admin_settings_save',{p:{event_name:$('e-name').value,start_time:$('e-start').value,end_time:$('e-end').value,place:$('e-place').value,addr:$('e-addr').value,pay_how:$('e-payhow').value,notes:$('e-notes').value,admin_contact:$('e-contact').value,price_hint:$('e-price').value,tickets_enabled:$('e-pdf').checked,whatsapp_url:$('e-wa').value,
    signup_deadline:$('e-sdl').value,pay_deadline:$('e-pdl').value,capacity:cap?String(Math.max(1,Math.round(num(cap)))):'',people_override:f?String(Math.max(1,Math.round(num($('e-people').value))||1)):''}})});
  const fl=$('faqList');
  $('faqAdd').addEventListener('click',()=>{fl.insertAdjacentHTML('beforeend',`<div class="faqrow"><div class="stack-form" style="gap:6px"><input type="text" data-q maxlength="140" aria-label="Pregunta" placeholder="Pregunta"><textarea data-a maxlength="600" aria-label="Respuesta" placeholder="Respuesta"></textarea></div><button class="ghost" type="button" data-fdel aria-label="Quitar pregunta">Quitar</button></div>`);fl.lastElementChild.querySelector('input').focus()});
