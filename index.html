@@ -420,7 +420,9 @@ function bindIcs(ev){const b=$('ics');if(!b)return;b.addEventListener('click',()
 
 /* ================= vista: inicio ================= */
 async function viewHome(){nav('home');const v=layout('ticket');
- const d=await rpc('public_info');paintInfo(d.event,d.money);
+ const deQ=new URLSearchParams(location.search).get('de');if(deQ)sess.set('nv_ref',deQ.slice(0,12));
+ const refCode=sess.get('nv_ref');
+ const [d,inviter]=await Promise.all([rpc('public_info'),refCode?rpc('ref_name',{p_ref:refCode}).catch(()=>null):null]);paintInfo(d.event,d.money);
  const tok=store.get('nv_token'),m=d.money,ev=d.event;
  const full=m.capacity!=null&&m.spots_left===0;
  const contact=ev.admin_contact?`<b>${esc(ev.admin_contact)}</b>`:'un gestor';
@@ -428,7 +430,7 @@ async function viewHome(){nav('home');const v=layout('ticket');
  const draw=()=>{
   const stubUp=!ev.signups_open?`<h2>Inscripciones cerradas</h2><p>El plazo terminó${ev.signup_deadline?' el '+fdate(ev.signup_deadline):''}. Si aún quieres venir, habla con ${contact}.</p>`
    :tok?`<h2>Ya estás dentro</h2><p>Abajo puedes apuntar a otra persona desde este móvil.</p>`
-   :`<p>Un minuto y estás dentro.${ev.signup_deadline?` Hasta el ${fdate(ev.signup_deadline)}.`:''}${m.capacity!=null?(full?' Aforo completo: entrarás en lista de espera.':` Quedan ${m.spots_left} plazas.`):''}</p>`;
+   :`<p>${inviter?`Te invita ${esc(inviter)}. `:''}Un minuto y estás dentro.${ev.signup_deadline?` Hasta el ${fdate(ev.signup_deadline)}.`:''}${m.capacity!=null?(full?' Aforo completo: entrarás en lista de espera.':` Quedan ${m.spots_left} plazas.`):''}</p>`;
   v.innerHTML=`<div class="ticket" id="apuntarme">
    <div class="stub"><div class="tabs2" role="tablist"><button type="button" role="tab" data-pane="up" class="${pane==='up'?'on':''}" aria-selected="${pane==='up'}">Me apunto</button><button type="button" role="tab" data-pane="in" class="${pane==='in'?'on':''}" aria-selected="${pane==='in'}">Ya estoy dentro</button></div>
     ${pane==='up'?stubUp:`<p>Entra con tu teléfono y tu PIN para ver tu entrada.</p>`}</div>
@@ -459,7 +461,7 @@ async function viewHome(){nav('home');const v=layout('ticket');
    catch(err){msg.className='msg err';msg.textContent=err.message;$('l-go').disabled=false}});
   $('signup')&&$('signup').addEventListener('submit',async e=>{e.preventDefault();const name=$('s-name').value.trim();if(!name)return;
    $('s-go').disabled=true;$('s-msg').className='msg';$('s-msg').textContent='Apuntándote…';
-   try{const t=await rpc('signup',{p_name:name,p_phone:$('s-phone').value,p_status:segVal($('signup')),p_pay:payVal($('signup')),p_pin:$('s-pin').value});
+   try{const t=await rpc('signup',{p_name:name,p_phone:$('s-phone').value,p_status:segVal($('signup')),p_pay:payVal($('signup')),p_pin:$('s-pin').value,p_ref:(pane2&&store.get('nv_myref'))||refCode||null});
     if(!store.get('nv_token'))store.set('nv_token',t);location.href='?t='+encodeURIComponent(t)+'&nuevo=1'}
    catch(err){$('s-msg').className='msg err';$('s-msg').textContent=err.message;$('s-go').disabled=false}});
  };
@@ -532,6 +534,7 @@ async function viewMe(tok){
  if(!d){nav('');const v=layout('ticket');v.innerHTML=`<div class="ticket"><div class="stub"><h2 style="margin:0">Este enlace no funciona</h2><p>Puede que te hayan borrado de la lista o que el enlace esté mal copiado.</p></div><div class="body"><a class="btn wide" href="./#entrar">Entrar con mi teléfono</a></div></div>`;
   if(store.get('nv_token')===tok)store.del('nv_token');const r=await rpc('public_info');paintInfo(r.event,r.money);return}
  if(!store.get('nv_token'))store.set('nv_token',tok);
+ if(store.get('nv_token')===tok&&d.ref_code)store.set('nv_myref',d.ref_code);
  nav(store.get('nv_token')===tok?'me':'');paintInfo(d.event,d.money);const v=layout('ticket');
  const g=d.guest,m=d.money,ev=d.event,c=d.collector,link=personalLink(tok),isNew=new URLSearchParams(location.search).has('nuevo');
  const wa=WA_RE.test(d.whatsapp_url||'')?d.whatsapp_url:'',cash=g.pay_method==='efectivo',waiting=g.status==='espera',out=g.status==='no';
@@ -556,6 +559,10 @@ async function viewMe(tok){
   ${wa&&!out&&!waiting?`<div class="callout wa block"><h3 style="margin:0">${isNew?'Último paso: entra al grupo':'El grupo de la fiesta'}</h3><p class="sub" style="margin:4px 0 12px">Ahí avisamos de todo: cambios, pagos y lo que falta.</p>
    <a class="btn wide" id="wa-join" href="${esc(wa)}" target="_blank" rel="noopener">Unirme al grupo de WhatsApp</a></div>`:''}
   ${!out?`<section class="card block"><h2>Que no se te olvide</h2><p class="sub" style="margin:0">Guárdalo en el calendario del móvil.</p>${calButtons(ev)}</section>`:''}
+  ${!out&&!waiting&&ev.signups_open?`<section class="card block" aria-labelledby="h-inv"><h2 id="h-inv">Invita a tus amigos</h2>
+   <p class="sub">Pásales tu enlace: quien se apunte desde él quedará apuntado de tu parte.${d.brought?` Ya has traído a ${d.brought}.`:''}</p>
+   <div class="linkbox"><input type="text" readonly value="${esc(base+'?de='+d.ref_code)}" aria-label="Tu enlace para invitar"><button class="btn2 sm" type="button" id="inv-copy">Copiar</button></div>
+   <a class="btn wide" style="margin-top:12px;background:#1fa855;box-shadow:0 4px 0 #13763a" href="https://wa.me/?text=${encodeURIComponent('¡Vente a la Nochevieja! Apúntate aquí: '+base+'?de='+d.ref_code)}" target="_blank" rel="noopener">Invitar por WhatsApp</a></section>`:''}
   <section class="card block" aria-labelledby="h-co"><h2 id="h-co">Vengo con alguien</h2>
    <p class="sub">Apúntale con su teléfono. Tendrá su propia entrada y pagará su parte.</p>
    ${comp.length?`<ul class="lines">${comp.map(x=>`<li><span><b>${esc(x.name)}</b> <small>${x.status==='espera'?'en espera':x.paid?'pagado':'pendiente de pago'}</small></span>
@@ -586,6 +593,7 @@ async function viewMe(tok){
  $('claim')&&$('claim').addEventListener('click',async()=>{try{await rpc('claim_paid',{p_token:tok,p_on:true});await reload()}catch(err){alert(err.message)}});
  $('unclaim')&&$('unclaim').addEventListener('click',async()=>{try{await rpc('claim_paid',{p_token:tok,p_on:false});await reload()}catch(err){alert(err.message)}});
  $('me-copy').addEventListener('click',e=>copy(link,e.target));
+ $('inv-copy')&&$('inv-copy').addEventListener('click',e=>copy(base+'?de='+d.ref_code,e.target));
  $('pdf')&&$('pdf').addEventListener('click',e=>downloadTicket({name:g.name,code:ticketCode(tok),amount:eur(m.per_person),paid:g.paid,time:ev.start_time,place:ev.place,addr:ev.addr},e.currentTarget));
  $('pin-form').addEventListener('submit',async e=>{e.preventDefault();const msg=$('pin-msg');
   try{await rpc('set_pin',{p_token:tok,p_pin:$('p-pin').value});await reload('pin-msg','PIN guardado. Ya puedes entrar con tu teléfono y este PIN.',true)}catch(err){msg.className='msg err';msg.textContent=err.message}});
@@ -673,10 +681,11 @@ function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone).to
  $('pane').innerHTML=`<section class="card"><div class="row" style="justify-content:space-between"><h2>Gente (${A.guests.length})</h2>
   <input type="search" id="q" placeholder="Buscar" value="${esc(filter)}" style="max-width:240px" aria-label="Buscar persona"></div>
   <p class="sub">Los cambios se guardan al salir de cada campo. «Recordar» abre WhatsApp con el mensaje de pago ya escrito; «Enlace» copia su ficha.</p>
-  <div class="scroll"><table class="stack"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Viene</th><th>Paga a</th><th>Cómo</th><th>Pagado</th><th>Avisos</th><th></th></tr></thead><tbody>
+  <div class="scroll"><table class="stack"><thead><tr><th>Nombre</th><th>Teléfono</th><th>De parte de</th><th>Viene</th><th>Paga a</th><th>Cómo</th><th>Pagado</th><th>Avisos</th><th></th></tr></thead><tbody>
   ${G.map(g=>`<tr data-id="${esc(g.id)}">
-   <td class="first"><input type="text" data-f="name" value="${esc(g.name)}" maxlength="60" aria-label="Nombre">${g.invited_by?`<small class="sub" style="display:block;font-size:13px">con ${esc(g.invited_by)}</small>`:''}</td>
+   <td class="first"><input type="text" data-f="name" value="${esc(g.name)}" maxlength="60" aria-label="Nombre">${g.brought?`<small class="sub" style="display:block;font-size:13px">Ha traído a ${g.brought}</small>`:''}</td>
    <td data-l="Teléfono"><input type="tel" data-f="phone" value="${esc(g.phone)}" maxlength="30" aria-label="Teléfono" style="min-width:120px"></td>
+   <td data-l="De parte de"><select data-f="by" aria-label="De parte de"><option value="">— Nadie —</option>${A.guests.filter(o=>o.id!==g.id).map(o=>`<option value="${esc(o.id)}"${g.invited_by_id===o.id?' selected':''}>${esc(o.name)}</option>`).join('')}</select></td>
    <td data-l="Viene"><select data-f="status" aria-label="Viene">${Object.entries(STATUS_ADMIN).map(([k,l])=>`<option value="${k}"${g.status===k?' selected':''}>${l}</option>`).join('')}</select></td>
    <td data-l="Paga a"><select data-f="collector" aria-label="Recaudador"><option value="">— Sin asignar —</option>${A.collectors.map(c=>`<option value="${esc(c.id)}"${g.collector_id===c.id?' selected':''}>${esc(c.name)}${c.active?'':' (inactivo)'}</option>`).join('')}</select></td>
    <td data-l="Cómo"><select data-f="pay" aria-label="Forma de pago">${Object.entries(PAY).map(([k,l])=>`<option value="${k}"${g.pay_method===k?' selected':''}>${l}</option>`).join('')}</select></td>
@@ -685,16 +694,16 @@ function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone).to
     ${g.status==='si'&&!g.paid&&g.phone?`<a class="chipbtn wa" href="${esc(waLink(g.phone,adminRemind(g)))}" target="_blank" rel="noopener" title="Abrir WhatsApp con el recordatorio de pago">${ICON_WA}Recordar</a>`:''}
     <button class="chipbtn" type="button" data-link="${esc(g.token)}" title="Copiar el enlace a su entrada">${ICON_LINK}<span>Enlace</span></button>
     ${g.locked?'<span class="tag red" title="Demasiados intentos de PIN">Bloqueado</span>':g.has_pin?'':'<span class="tag" title="Todavía no ha creado su PIN">Sin PIN</span>'}</span></td>
-   <td class="del"><button class="ghost" type="button" data-del aria-label="Borrar a ${esc(g.name)}">✕</button></td></tr>`).join('')||'<tr><td colspan="8" class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</td></tr>'}
+   <td class="del"><button class="ghost" type="button" data-del aria-label="Borrar a ${esc(g.name)}">✕</button></td></tr>`).join('')||'<tr><td colspan="9" class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</td></tr>'}
   </tbody></table></div>
   <form class="add three" id="gAdd" autocomplete="off"><input type="text" id="g-name" placeholder="Nombre" required maxlength="60" aria-label="Nombre"><input type="tel" id="g-phone" placeholder="Teléfono (opcional)" maxlength="30" aria-label="Teléfono"><button class="btn" type="submit">Añadir</button></form></section>`;
  $('q').addEventListener('input',e=>{filter=e.target.value;const p=e.target.selectionStart;paneGente();const q=$('q');q.focus();q.setSelectionRange(p,p)});
  const tb=$('pane').querySelector('tbody');
  tb.addEventListener('change',e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const val=f=>tr.querySelector(`[data-f="${f}"]`);
-  act('admin_guest_save',{p_id:tr.dataset.id,p_name:val('name').value,p_phone:val('phone').value,p_status:val('status').value,p_brings:null,p_paid:val('paid').checked,p_pay:val('pay').value,p_collector:val('collector').value||null})});
+  act('admin_guest_save',{p_id:tr.dataset.id,p_name:val('name').value,p_phone:val('phone').value,p_status:val('status').value,p_brings:null,p_paid:val('paid').checked,p_pay:val('pay').value,p_collector:val('collector').value||null,p_invited_by:val('by').value||null})});
  tb.addEventListener('click',e=>{const l=e.target.closest('[data-link]');if(l){copy(personalLink(l.dataset.link),l.querySelector('span')||l);return}
   const d=e.target.closest('[data-del]');if(d){const id=d.closest('tr').dataset.id;confirm2(d,'¿Borrar?',()=>act('admin_guest_delete',{p_id:id}))}});
- $('gAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_guest_save',{p_id:null,p_name:$('g-name').value,p_phone:$('g-phone').value,p_status:'si',p_brings:'',p_paid:false,p_pay:'bizum',p_collector:null})});
+ $('gAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_guest_save',{p_id:null,p_name:$('g-name').value,p_phone:$('g-phone').value,p_status:'si',p_brings:'',p_paid:false,p_pay:'bizum',p_collector:null,p_invited_by:null})});
 }
 function paneCol(){const C=A.collectors,unassigned=A.guests.filter(g=>['si','quiza'].includes(g.status)&&!g.collector_id).length,pp=A.money.per_person;
  $('pane').innerHTML=`<section class="card"><div class="row" style="justify-content:space-between"><h2>Recaudadores</h2>

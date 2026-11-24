@@ -97,6 +97,11 @@ alter table public.guests add column if not exists login_fails_total int not nul
 alter table public.guests add column if not exists paid_claim_at timestamptz;
 -- Acompañante: quién le apuntó
 alter table public.guests add column if not exists invited_by uuid references public.guests(id) on delete set null;
+-- Código corto para el enlace de invitación (?de=CODIGO); no es el enlace privado
+alter table public.guests add column if not exists ref_code text not null default upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6));
+do $$ begin
+  alter table public.guests add constraint guests_ref_code_key unique (ref_code);
+exception when duplicate_table or duplicate_object then null; end $$;
 
 create table if not exists public.items (
   id uuid primary key default gen_random_uuid(),
@@ -135,6 +140,7 @@ drop function if exists public.signup(text,text,text,text,text);
 drop function if exists public.update_me(uuid,text,text,text,text);
 drop function if exists public.update_me(uuid,text,text,text,text,text);
 drop function if exists public.admin_guest_save(text,uuid,text,text,text,text,boolean);
+drop function if exists public.admin_guest_save(text,uuid,text,text,text,text,boolean,text,uuid);
 drop function if exists public.admin_item_save(text,uuid,text,text,numeric,numeric,text,boolean,boolean);
 
 -- ======================= AYUDAS =======================
@@ -284,12 +290,20 @@ returns json language sql stable security definer set search_path = public as $$
     'coming', '[]'::json);  -- los nombres de quién viene ya no se enseñan en público
 $$;
 
-create or replace function public.signup(p_name text, p_phone text, p_status text, p_pay text, p_pin text)
+-- p_ref: código de quien invita (enlace ?de=CODIGO o «apuntar a otra persona» desde su móvil)
+create or replace function public.signup(p_name text, p_phone text, p_status text, p_pay text, p_pin text, p_ref text)
 returns uuid language plpgsql volatile security definer set search_path = public as $$
 begin
   if coalesce(p_pin,'') !~ '^[0-9]{4}$' then raise exception 'El PIN tiene que ser de 4 cifras'; end if;
-  return public._new_guest(p_name, p_phone, p_status, p_pay, p_pin, null);
+  return public._new_guest(p_name, p_phone, p_status, p_pay, p_pin,
+    (select id from guests where ref_code = upper(trim(coalesce(p_ref,''))) limit 1));
 end $$;
+
+-- Nombre de quien invita, para saludar en la página («Te invita Laura»)
+create or replace function public.ref_name(p_ref text)
+returns text language sql stable security definer set search_path = public as $$
+  select split_part(name,' ',1) from guests where ref_code = upper(trim(coalesce(p_ref,''))) and status <> 'no' limit 1;
+$$;
 
 -- Entrar con teléfono + PIN. Devuelve {"token": ...} o {"error": ...}
 -- (no lanza error para que el contador de fallos se guarde)
@@ -333,6 +347,8 @@ returns json language sql stable security definer set search_path = public as $$
                                   (select count(*) from guests w where w.status = 'espera' and w.created_at <= g.created_at) end),
     'collector', public._collector_json(g.collector_id),
     'invited_by', (select name from guests i where i.id = g.invited_by),
+    'ref_code', g.ref_code,
+    'brought', (select count(*) from guests b where b.invited_by = g.id and b.status <> 'no'),
     'companions', coalesce((select json_agg(json_build_object('name',c.name,'phone',c.phone,'status',c.status,'paid',c.paid,
                                     'token',c.token,'has_pin',c.pin_hash is not null) order by c.created_at)
                             from guests c where c.invited_by = g.id), '[]'::json),
@@ -487,11 +503,12 @@ begin
     'guests', coalesce((select json_agg(json_build_object('id',g.id,'token',g.token,'name',g.name,'phone',g.phone,'status',g.status,
         'paid',g.paid,'pay_method',g.pay_method,'collector_id',g.collector_id,'has_pin',g.pin_hash is not null,
         'locked',g.login_fails_total >= 15,'claimed',g.paid_claim_at is not null,
-        'invited_by',(select i.name from guests i where i.id = g.invited_by),'created_at',g.created_at) order by g.name) from guests g), '[]'::json),
+        'invited_by',(select i.name from guests i where i.id = g.invited_by),'invited_by_id',g.invited_by,
+        'brought',(select count(*) from guests b where b.invited_by = g.id and b.status <> 'no'),'created_at',g.created_at) order by g.name) from guests g), '[]'::json),
     'items', coalesce((select json_agg(json_build_object('id',i.id,'name',i.name,'cat',i.cat,'q',i.q,'p',i.p,'who',i.who,'done',i.done,'opt',i.opt,'ord',i.ord,'spent',i.spent) order by i.ord, i.name) from items i), '[]'::json));
 end $$;
 
-create or replace function public.admin_guest_save(p_pin text, p_id uuid, p_name text, p_phone text, p_status text, p_brings text, p_paid boolean, p_pay text, p_collector uuid)
+create or replace function public.admin_guest_save(p_pin text, p_id uuid, p_name text, p_phone text, p_status text, p_brings text, p_paid boolean, p_pay text, p_collector uuid, p_invited_by uuid)
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare e text := public._pin_error(p_pin); r uuid; dup text;
 begin
@@ -500,18 +517,19 @@ begin
   dup := public._phone_owner(p_phone, p_id);
   if dup is not null then return json_build_object('error','Ese teléfono ya lo tiene ' || dup); end if;
   if p_id is null then
-    insert into guests (name, phone, status, brings, paid, pay_method, collector_id)
+    insert into guests (name, phone, status, brings, paid, pay_method, collector_id, invited_by)
     values (left(trim(p_name),60), left(trim(coalesce(p_phone,'')),30),
             case when p_status in ('si','quiza','no','espera') then p_status else 'si' end,
             left(trim(coalesce(p_brings,'')),120), coalesce(p_paid,false),
-            case when p_pay = 'efectivo' then 'efectivo' else 'bizum' end, p_collector)
+            case when p_pay = 'efectivo' then 'efectivo' else 'bizum' end, p_collector, p_invited_by)
     returning id into r;
   else
     update guests set name = left(trim(p_name),60), phone = left(trim(coalesce(p_phone,'')),30),
       status = case when p_status in ('si','quiza','no','espera') then p_status else status end,
       brings = left(trim(coalesce(p_brings,brings)),120), paid = coalesce(p_paid, paid),
       pay_method = case when p_pay in ('bizum','efectivo') then p_pay else pay_method end,
-      collector_id = p_collector
+      collector_id = p_collector,
+      invited_by = case when p_invited_by = p_id then invited_by else p_invited_by end
     where id = p_id returning id into r;
   end if;
   perform public._assign_missing();
@@ -640,12 +658,12 @@ end $$;
 -- ======================= PERMISOS =======================
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function
-  public.public_info(), public.signup(text,text,text,text,text), public.login(text,text),
+  public.public_info(), public.signup(text,text,text,text,text,text), public.ref_name(text), public.login(text,text),
   public.me(uuid), public.update_me(uuid,text,text,text,text), public.set_pin(uuid,text),
   public.claim_paid(uuid,boolean), public.add_companion(uuid,text,text),
   public.collector_view(uuid), public.collector_mark(uuid,uuid,boolean),
   public.admin_setup_pin(text), public.admin_change_pin(text,text), public.admin_state(text),
-  public.admin_guest_save(text,uuid,text,text,text,text,boolean,text,uuid), public.admin_guest_delete(text,uuid),
+  public.admin_guest_save(text,uuid,text,text,text,text,boolean,text,uuid,uuid), public.admin_guest_delete(text,uuid),
   public.admin_collector_save(text,uuid,text,text,boolean), public.admin_collector_delete(text,uuid),
   public.admin_collectors_reshuffle(text),
   public.admin_item_save(text,uuid,text,text,numeric,numeric,text,boolean,boolean,numeric), public.admin_item_delete(text,uuid),
