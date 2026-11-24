@@ -97,6 +97,8 @@ alter table public.guests add column if not exists login_fails_total int not nul
 alter table public.guests add column if not exists paid_claim_at timestamptz;
 -- Acompañante: quién le apuntó
 alter table public.guests add column if not exists invited_by uuid references public.guests(id) on delete set null;
+-- PIN inicial de un acompañante: lo ve quien le apuntó hasta que el acompañante lo cambie
+alter table public.guests add column if not exists pin_initial text;
 -- Código corto para el enlace de invitación (?de=CODIGO); no es el enlace privado
 alter table public.guests add column if not exists ref_code text not null default upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6));
 do $$ begin
@@ -350,7 +352,7 @@ returns json language sql stable security definer set search_path = public as $$
     'ref_code', g.ref_code,
     'brought', (select count(*) from guests b where b.invited_by = g.id and b.status <> 'no'),
     'companions', coalesce((select json_agg(json_build_object('name',c.name,'phone',c.phone,'status',c.status,'paid',c.paid,
-                                    'token',c.token,'has_pin',c.pin_hash is not null) order by c.created_at)
+                                    'token',c.token,'has_pin',c.pin_hash is not null,'pin',c.pin_initial) order by c.created_at)
                             from guests c where c.invited_by = g.id), '[]'::json),
     'whatsapp_url', (select whatsapp_url from settings where id = 1),
     'event', public._event(),
@@ -387,7 +389,7 @@ create or replace function public.set_pin(p_token uuid, p_pin text)
 returns json language plpgsql volatile security definer set search_path = public, extensions as $$
 begin
   if coalesce(p_pin,'') !~ '^[0-9]{4}$' then return json_build_object('error','El PIN tiene que ser de 4 cifras'); end if;
-  update guests set pin_hash = crypt(p_pin, gen_salt('bf', 6)), login_fails = 0, login_fail_since = null, login_fails_total = 0
+  update guests set pin_hash = crypt(p_pin, gen_salt('bf', 6)), pin_initial = null, login_fails = 0, login_fail_since = null, login_fails_total = 0
   where token = p_token;
   if not found then return json_build_object('error','Enlace no válido'); end if;
   return json_build_object('ok', true);
@@ -404,12 +406,15 @@ end $$;
 -- Apuntar a un acompañante (máximo 3 por persona). Devuelve el token del acompañante.
 create or replace function public.add_companion(p_token uuid, p_name text, p_phone text)
 returns uuid language plpgsql volatile security definer set search_path = public as $$
-declare g guests;
+declare g guests; pin text; t uuid;
 begin
   select * into g from guests where token = p_token;
   if g.id is null then raise exception 'Enlace no válido'; end if;
   if (select count(*) from guests where invited_by = g.id) >= 3 then raise exception 'Máximo 3 acompañantes por persona'; end if;
-  return public._new_guest(p_name, p_phone, 'si', 'bizum', null, g.id);
+  pin := lpad(floor(random() * 10000)::int::text, 4, '0');
+  t := public._new_guest(p_name, p_phone, 'si', 'bizum', pin, g.id);
+  update guests set pin_initial = pin where token = t;
+  return t;
 end $$;
 
 -- ======================= RECAUDADOR (enlace de cobros) =======================

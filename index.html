@@ -226,6 +226,25 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 .tag{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:700;background:var(--card2);color:var(--mute)}
 .tag.gold{background:var(--gold-bg);color:#ffd96a}
 .tag.red{background:var(--red-bg);color:#ff8a92}
+.pinshow{display:inline-flex;align-items:center;gap:6px;margin-top:6px;background:var(--gold-bg);color:#ffd96a;border-radius:10px;padding:4px 10px;font-size:14px}
+.pinshow b{font:700 16px Unbounded,sans-serif;letter-spacing:.18em;color:var(--gold)}
+.lines.comp li{align-items:center}
+.lines.comp li>span{display:grid;justify-items:start}
+/* Gente: una tarjeta por persona */
+.people{display:grid;gap:12px}
+.pcard{background:var(--card2);border-radius:18px;padding:14px 16px;display:grid;gap:12px}
+.pcard.out{opacity:.6}
+.phead{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}
+.phead input{font-weight:700;font-size:17px;background:transparent;border-color:transparent;padding-left:4px}
+.phead input:hover{border-color:var(--line)}
+.paidtog{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px 0 10px;border-radius:99px;background:var(--card);font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+.paidtog:has(input:checked){background:var(--grape-bg);color:#b9f07f}
+.pfields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.pfields label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--mute)}
+.pfields input,.pfields select{min-height:42px;padding:6px 10px;font-size:15px;border-width:1px;border-radius:10px;background:var(--card)}
+.pfoot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.pmeta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+@media(max-width:900px){.pfields{grid-template-columns:repeat(2,minmax(0,1fr))}.pfields label:first-child{grid-column:1/-1}}
 @media(max-width:700px){
  .stack thead{display:none}
  .stack tr{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:6px 8px;padding:14px 0;border-bottom:2px solid var(--line)}
@@ -565,8 +584,9 @@ async function viewMe(tok){
    <a class="btn wide" style="margin-top:12px;background:#1fa855;box-shadow:0 4px 0 #13763a" href="https://wa.me/?text=${encodeURIComponent('¡Vente a la Nochevieja! Apúntate aquí: '+base+'?de='+d.ref_code)}" target="_blank" rel="noopener">Invitar por WhatsApp</a></section>`:''}
   <section class="card block" aria-labelledby="h-co"><h2 id="h-co">Vengo con alguien</h2>
    <p class="sub">Apúntale con su teléfono. Tendrá su propia entrada y pagará su parte.</p>
-   ${comp.length?`<ul class="lines">${comp.map(x=>`<li><span><b>${esc(x.name)}</b> <small>${x.status==='espera'?'en espera':x.paid?'pagado':'pendiente de pago'}</small></span>
-     <a class="btn2 sm" href="${esc(waLink(x.phone,`¡Te he apuntado a la Nochevieja! Aquí tienes tu entrada, con lo que te toca pagar y a quién: ${personalLink(x.token)}${x.has_pin?'':' (dentro puedes crear tu PIN para entrar luego con tu teléfono)'}`))}" target="_blank" rel="noopener">Mandarle su entrada</a></li>`).join('')}</ul>`:''}
+   ${comp.length?`<ul class="lines comp">${comp.map(x=>`<li><span><b>${esc(x.name)}</b> <small>${x.status==='espera'?'en espera':x.paid?'pagado':'pendiente de pago'}</small>
+      ${x.pin?`<span class="pinshow">Su PIN: <b>${esc(x.pin)}</b></span>`:x.has_pin?'<small style="display:block">Ya ha puesto su propio PIN</small>':''}</span>
+     <a class="chipbtn wa" href="${esc(waLink(x.phone,`¡Te he apuntado a la Nochevieja! Aquí tienes tu entrada, con lo que te toca pagar y a quién: ${personalLink(x.token)}${x.pin?` · Para entrar otro día: tu teléfono y el PIN ${x.pin} (puedes cambiarlo dentro).`:''}`))}" target="_blank" rel="noopener">${ICON_WA}Mandarle su entrada</a></li>`).join('')}</ul>`:''}
    ${comp.length<3&&ev.signups_open?`<form class="add three" id="c-form" autocomplete="off"><input type="text" id="c-name" required maxlength="60" placeholder="Su nombre" aria-label="Nombre del acompañante"><input type="tel" id="c-phone" required maxlength="30" inputmode="tel" placeholder="Su teléfono" aria-label="Teléfono del acompañante"><button class="btn" type="submit">Apuntarle</button></form><p class="msg" id="c-msg" aria-live="polite"></p>`:comp.length>=3?'<p class="sub" style="margin:0">Máximo 3 acompañantes.</p>':'<p class="sub" style="margin:0">Las inscripciones están cerradas.</p>'}
   </section>
   <details class="card block" id="mydata"${g.has_pin?'':' open'}><summary style="cursor:pointer"><h2 style="display:inline">Mis datos</h2></summary>
@@ -678,31 +698,32 @@ const STATUS_ADMIN={si:'Sí',quiza:'Quizá',espera:'En espera',no:'No'};
 function adminRemind(g){const c=A.collectors.find(x=>x.id===g.collector_id),ev=A.event,m=A.money;
  return `Hola ${g.name}! Te falta pagar ${eur(m.per_person)} de la Nochevieja${ev.pay_deadline?` (antes del ${fdate(ev.pay_deadline)})`:''}. ${c?(g.pay_method==='efectivo'?`Dáselo en mano a ${c.name}.`:`Haz el Bizum a ${c.name} (${c.phone}) con el concepto «${concept(g.name)}».`):''} Tu ficha: ${personalLink(g.token)}`}
 function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone).toLowerCase().includes(filter.toLowerCase()));
+ const sel=(f,label,opts,cur)=>`<label>${label}<select data-f="${f}">${opts.map(([v,l])=>`<option value="${esc(v)}"${String(cur??'')===String(v)?' selected':''}>${esc(l)}</option>`).join('')}</select></label>`;
  $('pane').innerHTML=`<section class="card"><div class="row" style="justify-content:space-between"><h2>Gente (${A.guests.length})</h2>
   <input type="search" id="q" placeholder="Buscar" value="${esc(filter)}" style="max-width:240px" aria-label="Buscar persona"></div>
-  <p class="sub">Los cambios se guardan al salir de cada campo. «Recordar» abre WhatsApp con el mensaje de pago ya escrito; «Enlace» copia su ficha.</p>
-  <div class="scroll"><table class="stack"><thead><tr><th>Nombre</th><th>Teléfono</th><th>De parte de</th><th>Viene</th><th>Paga a</th><th>Cómo</th><th>Pagado</th><th>Avisos</th><th></th></tr></thead><tbody>
-  ${G.map(g=>`<tr data-id="${esc(g.id)}">
-   <td class="first"><input type="text" data-f="name" value="${esc(g.name)}" maxlength="60" aria-label="Nombre">${g.brought?`<small class="sub" style="display:block;font-size:13px">Ha traído a ${g.brought}</small>`:''}</td>
-   <td data-l="Teléfono"><input type="tel" data-f="phone" value="${esc(g.phone)}" maxlength="30" aria-label="Teléfono" style="min-width:120px"></td>
-   <td data-l="De parte de"><select data-f="by" aria-label="De parte de"><option value="">— Nadie —</option>${A.guests.filter(o=>o.id!==g.id).map(o=>`<option value="${esc(o.id)}"${g.invited_by_id===o.id?' selected':''}>${esc(o.name)}</option>`).join('')}</select></td>
-   <td data-l="Viene"><select data-f="status" aria-label="Viene">${Object.entries(STATUS_ADMIN).map(([k,l])=>`<option value="${k}"${g.status===k?' selected':''}>${l}</option>`).join('')}</select></td>
-   <td data-l="Paga a"><select data-f="collector" aria-label="Recaudador"><option value="">— Sin asignar —</option>${A.collectors.map(c=>`<option value="${esc(c.id)}"${g.collector_id===c.id?' selected':''}>${esc(c.name)}${c.active?'':' (inactivo)'}</option>`).join('')}</select></td>
-   <td data-l="Cómo"><select data-f="pay" aria-label="Forma de pago">${Object.entries(PAY).map(([k,l])=>`<option value="${k}"${g.pay_method===k?' selected':''}>${l}</option>`).join('')}</select></td>
-   <td data-l="Pagado"><label class="tick"><input type="checkbox" data-f="paid"${g.paid?' checked':''} aria-label="Ha pagado"></label></td>
-   <td data-l="Avisos"><span class="acts">${g.claimed&&!g.paid?'<span class="tag gold" title="Ha avisado de que ya pagó">Dice que pagó</span>':''}
-    ${g.status==='si'&&!g.paid&&g.phone?`<a class="chipbtn wa" href="${esc(waLink(g.phone,adminRemind(g)))}" target="_blank" rel="noopener" title="Abrir WhatsApp con el recordatorio de pago">${ICON_WA}Recordar</a>`:''}
-    <button class="chipbtn" type="button" data-link="${esc(g.token)}" title="Copiar el enlace a su entrada">${ICON_LINK}<span>Enlace</span></button>
-    ${g.locked?'<span class="tag red" title="Demasiados intentos de PIN">Bloqueado</span>':g.has_pin?'':'<span class="tag" title="Todavía no ha creado su PIN">Sin PIN</span>'}</span></td>
-   <td class="del"><button class="ghost" type="button" data-del aria-label="Borrar a ${esc(g.name)}">✕</button></td></tr>`).join('')||'<tr><td colspan="9" class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</td></tr>'}
-  </tbody></table></div>
+  <p class="sub">Los cambios se guardan solos al tocar cada campo.</p>
+  <div class="people">${G.map(g=>`<article class="pcard${g.status==='no'?' out':''}" data-id="${esc(g.id)}">
+   <div class="phead"><input type="text" data-f="name" value="${esc(g.name)}" maxlength="60" aria-label="Nombre">
+    <label class="paidtog"><input type="checkbox" data-f="paid"${g.paid?' checked':''}> ${g.paid?'Pagado':'Sin pagar'}</label>
+    <button class="ghost" type="button" data-del aria-label="Borrar a ${esc(g.name)}">✕</button></div>
+   <div class="pfields">
+    <label>Teléfono<input type="tel" data-f="phone" value="${esc(g.phone)}" maxlength="30"></label>
+    ${sel('status','Viene',Object.entries(STATUS_ADMIN),g.status)}
+    ${sel('by','De parte de',[['','Nadie'],...A.guests.filter(o=>o.id!==g.id).map(o=>[o.id,o.name])],g.invited_by_id||'')}
+    ${sel('collector','Paga a',[['','Sin asignar'],...A.collectors.map(c=>[c.id,c.name+(c.active?'':' (inactivo)')])],g.collector_id||'')}
+    ${sel('pay','Cómo',Object.entries(PAY),g.pay_method)}
+   </div>
+   <div class="pfoot"><div class="pmeta">${g.brought?`<span class="tag">Ha traído a ${g.brought}</span>`:''}${g.claimed&&!g.paid?'<span class="tag gold">Dice que pagó</span>':''}${g.locked?'<span class="tag red">Bloqueado</span>':g.has_pin?'':'<span class="tag">Sin PIN</span>'}</div>
+    <div class="acts">${g.status==='si'&&!g.paid&&g.phone?`<a class="chipbtn wa" href="${esc(waLink(g.phone,adminRemind(g)))}" target="_blank" rel="noopener" title="Abrir WhatsApp con el recordatorio de pago">${ICON_WA}Recordar</a>`:''}
+    <button class="chipbtn" type="button" data-link="${esc(g.token)}" title="Copiar el enlace a su entrada">${ICON_LINK}<span>Enlace</span></button></div></div>
+  </article>`).join('')||'<p class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</p>'}</div>
   <form class="add three" id="gAdd" autocomplete="off"><input type="text" id="g-name" placeholder="Nombre" required maxlength="60" aria-label="Nombre"><input type="tel" id="g-phone" placeholder="Teléfono (opcional)" maxlength="30" aria-label="Teléfono"><button class="btn" type="submit">Añadir</button></form></section>`;
  $('q').addEventListener('input',e=>{filter=e.target.value;const p=e.target.selectionStart;paneGente();const q=$('q');q.focus();q.setSelectionRange(p,p)});
- const tb=$('pane').querySelector('tbody');
- tb.addEventListener('change',e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const val=f=>tr.querySelector(`[data-f="${f}"]`);
-  act('admin_guest_save',{p_id:tr.dataset.id,p_name:val('name').value,p_phone:val('phone').value,p_status:val('status').value,p_brings:null,p_paid:val('paid').checked,p_pay:val('pay').value,p_collector:val('collector').value||null,p_invited_by:val('by').value||null})});
- tb.addEventListener('click',e=>{const l=e.target.closest('[data-link]');if(l){copy(personalLink(l.dataset.link),l.querySelector('span')||l);return}
-  const d=e.target.closest('[data-del]');if(d){const id=d.closest('tr').dataset.id;confirm2(d,'¿Borrar?',()=>act('admin_guest_delete',{p_id:id}))}});
+ const list=$('pane').querySelector('.people');
+ list.addEventListener('change',e=>{const card=e.target.closest('.pcard');if(!card)return;const val=f=>card.querySelector(`[data-f="${f}"]`);
+  act('admin_guest_save',{p_id:card.dataset.id,p_name:val('name').value,p_phone:val('phone').value,p_status:val('status').value,p_brings:null,p_paid:val('paid').checked,p_pay:val('pay').value,p_collector:val('collector').value||null,p_invited_by:val('by').value||null})});
+ list.addEventListener('click',e=>{const l=e.target.closest('[data-link]');if(l){copy(personalLink(l.dataset.link),l.querySelector('span')||l);return}
+  const d=e.target.closest('[data-del]');if(d){const id=d.closest('.pcard').dataset.id;confirm2(d,'¿Borrar?',()=>act('admin_guest_delete',{p_id:id}))}});
  $('gAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_guest_save',{p_id:null,p_name:$('g-name').value,p_phone:$('g-phone').value,p_status:'si',p_brings:'',p_paid:false,p_pay:'bizum',p_collector:null,p_invited_by:null})});
 }
 function paneCol(){const C=A.collectors,unassigned=A.guests.filter(g=>['si','quiza'].includes(g.status)&&!g.collector_id).length,pp=A.money.per_person;
