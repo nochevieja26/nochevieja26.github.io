@@ -271,6 +271,15 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 @media(max-width:700px){.gfil{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .gcount{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;margin:4px 0 10px}
 .tag.new{background:var(--grape-bg);color:#c9f59b}
+.log{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:2px}
+.log .lday{font-size:13px;font-weight:700;color:var(--gold);margin:14px 0 4px}
+.log .lday::first-letter{text-transform:uppercase}
+.log .lday:first-child{margin-top:0}
+.lrow{display:grid;grid-template-columns:52px 1fr;gap:10px;padding:10px 12px;border-radius:12px;background:var(--card2);border-left:3px solid transparent}
+.lrow.add{border-left-color:var(--grape)}.lrow.del{border-left-color:var(--red2)}
+.lrow time{font-variant-numeric:tabular-nums;font-size:14px;opacity:.75;padding-top:1px}
+.lrow span{overflow-wrap:anywhere}
+.lrow small{display:block;font-size:13px;opacity:.65;margin-top:2px}
 .pcard{background:var(--card2);border-radius:18px;padding:14px 16px;display:grid;gap:12px}
 .pcard.out{opacity:.6}
 .phead{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}
@@ -754,13 +763,25 @@ function renderAdmin(){const v=$('below'),m=A.money,G=A.guests;
   <div class="stat"><small>Recaudado</small><span class="big">${eur(m.collected)}</span><small>faltan ${eur(Math.max(0,m.total-m.collected))}</small></div>
   <div class="stat"><small>Bote disponible</small><span class="big">${eur(bote)}</span><small>recaudado − gastado (${eur(A.spent)})</small></div>
  </div>
- <div class="tabs" role="tablist">${[['gente','Gente'],['recaudadores','Recaudadores'],['compra','Compra y gastos'],['datos','Datos de la fiesta']].map(([k,l])=>`<button type="button" role="tab" aria-selected="${tab===k}" class="${tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}</div>
+ <div class="tabs" role="tablist">${[['gente','Gente'],['recaudadores','Recaudadores'],['compra','Compra y gastos'],['datos','Datos de la fiesta'],['historial','Historial']].map(([k,l])=>`<button type="button" role="tab" aria-selected="${tab===k}" class="${tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}</div>
  <div id="pane"></div><p class="msg" id="aMsg" aria-live="polite"></p>`;
  v.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;sess.set('nv_tab',tab);renderAdmin()});
  $('out').addEventListener('click',()=>{sess.del('nv_pin');viewAdmin()});
  $('invite').addEventListener('click',e=>copy(`🎆 ${A.event.event_name||'Nochevieja 2026'} 🎆\n31 de diciembre${A.event.place?' en '+A.event.place:''}${A.event.start_time?' a las '+A.event.start_time:''}.\n${A.event.signup_deadline?`Apúntate antes del ${fdate(A.event.signup_deadline)}`:'Apúntate'} y mira lo que te toca poner:\n${base}`,e.target));
  $('sum').addEventListener('click',e=>copy(summary(),e.target));
- ({gente:paneGente,recaudadores:paneCol,compra:paneCompra,datos:paneDatos})[tab]()}
+ ({gente:paneGente,recaudadores:paneCol,compra:paneCompra,datos:paneDatos,historial:paneLog}[tab]||paneGente)()}
+let logQ='';
+function paneLog(){const L=(A.log||[]).filter(l=>!logQ||(l.guest+' '+l.who+' '+l.what).toLowerCase().includes(logQ.toLowerCase()));
+ const day=d=>new Date(d).toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Madrid'}),
+  hm=d=>new Date(d).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'});
+ let last='';
+ $('pane').innerHTML=`<section class="card"><div class="row" style="justify-content:space-between"><h2>Historial</h2>
+  <input type="search" id="lq" placeholder="Buscar persona o cambio" value="${esc(logQ)}" style="max-width:260px" aria-label="Buscar en el historial"></div>
+  <p class="sub">Quién se apunta, se borra, cambia de idea o paga, y quién lo hizo. Se guardan los últimos cambios.</p>
+  <ol class="log">${L.map(l=>{const d=day(l.at),h=d!==last?`<li class="lday">${esc(d)}</li>`:'';last=d;
+   return h+`<li class="lrow${/Borrado/.test(l.what)?' del':/^Se apunta/.test(l.what)?' add':''}"><time>${hm(l.at)}</time><div><b>${esc(l.guest)}</b> <span>${esc(l.what)}</span><small>${esc(l.who)}</small></div></li>`}).join('')
+   ||`<li class="msg">${A.log&&A.log.length?'Nada coincide con la búsqueda.':'Todavía no hay cambios registrados. A partir de ahora se irán apuntando aquí.'}</li>`}</ol></section>`;
+ $('lq').addEventListener('input',e=>{logQ=e.target.value;const p=e.target.selectionStart;paneLog();const q=$('lq');q.focus();q.setSelectionRange(p,p)})}
 function summary(){const m=A.money,ev=A.event;
  return [`🎆 ${ev.event_name||'Nochevieja 2026'} 🎆`,`📍 ${ev.place||'Local por confirmar'}${ev.addr?' · '+ev.addr:''}`,`🕙 31 dic a las ${ev.start_time||'22:00'}`,ev.notes?'ℹ️ '+ev.notes:'','',
   `Cada uno pone ${eur(m.per_person)} (lo veis en vuestra entrada)`,`Confirmados: ${m.si}${m.quiza?' (+'+m.quiza+' en duda)':''}${m.espera?' · '+m.espera+' en espera':''} · Han pagado: ${m.paid}`,

@@ -133,6 +133,17 @@ alter table public.collectors enable row level security;
 alter table public.guests     enable row level security;
 alter table public.items      enable row level security;
 
+-- Historial de cambios en la gente (lo rellena un trigger)
+create table if not exists public.log (
+  id bigserial primary key,
+  at timestamptz not null default now(),
+  who text not null default '',      -- quién lo hizo: la propia persona, gestión, recaudador...
+  guest text not null default '',    -- a quién afecta
+  what text not null default ''
+);
+create index if not exists log_at_idx on public.log (at desc);
+alter table public.log enable row level security;
+
 -- Intentos fallidos por dispositivo (IP): quien prueba PINs solo se bloquea a sí mismo
 create table if not exists public.attempts (k text primary key, n int not null default 0, since timestamptz not null default now());
 alter table public.attempts enable row level security;
@@ -163,7 +174,7 @@ begin
     n = case when a.since > now() - interval '15 minutes' then a.n + 1 else 1 end,
     since = case when a.since > now() - interval '15 minutes' then a.since else now() end;
 end $$;
-revoke all on public.settings, public.collectors, public.guests, public.items, public.attempts from anon, authenticated;
+revoke all on public.settings, public.collectors, public.guests, public.items, public.attempts, public.log from anon, authenticated;
 
 -- Versiones antiguas de funciones cuyos parámetros han cambiado
 drop function if exists public._check_pin(text);
@@ -333,9 +344,52 @@ returns json language sql stable security definer set search_path = public as $$
 $$;
 
 -- p_ref: código de quien invita (enlace ?de=CODIGO o «apuntar a otra persona» desde su móvil)
+-- ======================= HISTORIAL =======================
+-- Cada función dice quién actúa con set_config('nv.actor', ...); el trigger apunta el cambio.
+create or replace function public._actor(p text)
+returns void language sql volatile as $$ select set_config('nv.actor', p, true) $$;
+
+create or replace function public._log_guest()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare who text := coalesce(nullif(current_setting('nv.actor', true),''), 'Sistema'); w text[] := '{}';
+  st constant json := '{"si":"Sí","quiza":"Quizá","espera":"En espera","no":"No"}';
+begin
+  if tg_op = 'INSERT' then
+    w := array['Se apunta (' || coalesce(st->>new.status, new.status) || ', ' || case when new.pay_method = 'efectivo' then 'efectivo' else 'Bizum' end || ')'
+      || coalesce(', de parte de ' || (select name from guests where id = new.invited_by), '')];
+    if new.collector_id is not null then w := w || ('Le toca pagar a ' || coalesce((select name from collectors where id = new.collector_id),'?')); end if;
+  elsif tg_op = 'DELETE' then
+    w := array['Borrado de la lista'];
+  else
+    if new.name is distinct from old.name then w := w || ('Nombre: ' || old.name || ' → ' || new.name); end if;
+    if new.phone is distinct from old.phone then w := w || ('Teléfono: ' || coalesce(nullif(old.phone,''),'—') || ' → ' || coalesce(nullif(new.phone,''),'—')); end if;
+    if new.status is distinct from old.status then
+      w := w || (case when old.status = 'espera' and new.status = 'si' then 'Sale de la lista de espera: ' else 'Viene: ' end
+                 || coalesce(st->>old.status, old.status) || ' → ' || coalesce(st->>new.status, new.status)); end if;
+    if new.pay_method is distinct from old.pay_method then w := w || ('Pagará por ' || case when new.pay_method = 'efectivo' then 'efectivo' else 'Bizum' end); end if;
+    if new.paid is distinct from old.paid then w := w || case when new.paid then 'Marcado como pagado' else 'Quitado el pagado' end; end if;
+    if (new.paid_claim_at is null) is distinct from (old.paid_claim_at is null) and not new.paid and not old.paid then
+      w := w || case when new.paid_claim_at is not null then 'Dice que ya ha pagado' else 'Retira el aviso de pago' end; end if;
+    if new.collector_id is distinct from old.collector_id then
+      w := w || ('Recaudador: ' || coalesce((select name from collectors where id = old.collector_id),'sin asignar') || ' → '
+                 || coalesce((select name from collectors where id = new.collector_id),'sin asignar')); end if;
+    if new.invited_by is distinct from old.invited_by then
+      w := w || ('De parte de: ' || coalesce((select name from guests where id = new.invited_by),'nadie')); end if;
+    if (new.pin_hash is distinct from old.pin_hash) and old.pin_hash is not null then w := w || 'Cambia su PIN'::text; end if;
+  end if;
+  if cardinality(w) > 0 then
+    insert into log (who, guest, what) values (who, coalesce(new.name, old.name), array_to_string(w, ' · '));
+    delete from log where id < (select id from log order by id desc offset 3000 limit 1);
+  end if;
+  return null;
+end $$;
+drop trigger if exists guests_log on public.guests;
+create trigger guests_log after insert or update or delete on public.guests for each row execute function public._log_guest();
+
 create or replace function public.signup(p_name text, p_phone text, p_status text, p_pay text, p_pin text, p_ref text)
 returns uuid language plpgsql volatile security definer set search_path = public as $$
 begin
+  perform public._actor('La propia persona');
   if coalesce(p_pin,'') !~ '^[0-9]{4}$' then raise exception 'El PIN tiene que ser de 4 cifras'; end if;
   return public._new_guest(p_name, p_phone, p_status, p_pay, p_pin,
     (select id from guests where ref_code = upper(trim(coalesce(p_ref,''))) limit 1));
@@ -399,6 +453,7 @@ create or replace function public.update_me(p_token uuid, p_name text, p_phone t
 returns void language plpgsql volatile security definer set search_path = public as $$
 declare g guests; st text;
 begin
+  perform public._actor(coalesce((select name from guests where token = p_token),'') || ' (desde su ficha)');
   select * into g from guests where token = p_token;
   if g.id is null then raise exception 'Enlace no válido'; end if;
   if char_length(trim(coalesce(p_name,''))) = 0 then raise exception 'Falta el nombre'; end if;
@@ -423,6 +478,7 @@ end $$;
 create or replace function public.set_pin(p_token uuid, p_pin text)
 returns json language plpgsql volatile security definer set search_path = public, extensions as $$
 begin
+  perform public._actor(coalesce((select name from guests where token = p_token),'') || ' (desde su ficha)');
   if coalesce(p_pin,'') !~ '^[0-9]{4}$' then return json_build_object('error','El PIN tiene que ser de 4 cifras'); end if;
   update guests set pin_hash = crypt(p_pin, gen_salt('bf', 6)), pin_initial = null, login_fails = 0, login_fail_since = null, login_fails_total = 0
   where token = p_token;
@@ -434,6 +490,7 @@ end $$;
 create or replace function public.claim_paid(p_token uuid, p_on boolean)
 returns json language plpgsql volatile security definer set search_path = public as $$
 begin
+  perform public._actor(coalesce((select name from guests where token = p_token),'') || ' (desde su ficha)');
   update guests set paid_claim_at = case when p_on then now() end where token = p_token and not paid;
   return json_build_object('ok', true);
 end $$;
@@ -443,6 +500,7 @@ create or replace function public.add_companion(p_token uuid, p_name text, p_pho
 returns uuid language plpgsql volatile security definer set search_path = public as $$
 declare g guests; pin text; t uuid;
 begin
+  perform public._actor(coalesce((select name from guests where token = p_token),'') || ' (le apunta como acompañante)');
   select * into g from guests where token = p_token;
   if g.id is null then raise exception 'Enlace no válido'; end if;
   if (select count(*) from guests where invited_by = g.id) >= 3 then raise exception 'Máximo 3 acompañantes por persona'; end if;
@@ -471,6 +529,7 @@ create or replace function public.collector_mark(p_token uuid, p_guest uuid, p_p
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare cid uuid := (select id from collectors where token = p_token);
 begin
+  perform public._actor('Recaudador ' || coalesce((select name from collectors where token = p_token),''));
   if cid is null then return json_build_object('error','Enlace de recaudador no válido'); end if;
   update guests set paid = coalesce(p_paid,false),
                     paid_claim_at = case when coalesce(p_paid,false) then paid_claim_at else null end
@@ -529,6 +588,8 @@ begin
   return json_build_object(
     'event', public._event(), 'money', public._money(), 'spent', v_spent,
     'whatsapp_url', (select whatsapp_url from settings where id = 1),
+    'log', coalesce((select json_agg(json_build_object('at',l.at,'who',l.who,'guest',l.guest,'what',l.what) order by l.id desc)
+                     from (select * from log order by id desc limit 400) l), '[]'::json),
     'collectors', coalesce((select json_agg(x order by x.created_at) from (
        select c.id, c.name, c.phone, c.active, c.created_at, c.token,
               count(g.id) filter (where g.status in ('si','quiza')) assigned,
@@ -551,6 +612,7 @@ create or replace function public.admin_guest_save(p_pin text, p_id uuid, p_name
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare e text := public._pin_error(p_pin); r uuid; dup text;
 begin
+  perform public._actor('Gestión');
   if e is not null then return json_build_object('error', e); end if;
   if char_length(trim(coalesce(p_name,''))) = 0 then return json_build_object('error','Falta el nombre'); end if;
   if trim(coalesce(p_phone,'')) <> '' and not public._phone_ok(p_phone) then return json_build_object('error','Ese teléfono no es válido. Pon un móvil de 9 cifras (empieza por 6 o 7). Si es de otro país, empieza por + y el prefijo.'); end if;
@@ -580,6 +642,7 @@ create or replace function public.admin_guest_delete(p_pin text, p_id uuid)
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare e text := public._pin_error(p_pin);
 begin
+  perform public._actor('Gestión');
   if e is not null then return json_build_object('error', e); end if;
   delete from guests where id = p_id;
   perform public._assign_missing();
@@ -590,6 +653,7 @@ create or replace function public.admin_collector_save(p_pin text, p_id uuid, p_
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare e text := public._pin_error(p_pin); r uuid; n int;
 begin
+  perform public._actor('Gestión');
   if e is not null then return json_build_object('error', e); end if;
   if char_length(trim(coalesce(p_name,''))) = 0 then return json_build_object('error','Falta el nombre'); end if;
   if trim(coalesce(p_phone,'')) <> '' and public._phone_key(p_phone) !~ '^[67][0-9]{8}$' then
@@ -612,6 +676,7 @@ create or replace function public.admin_collector_delete(p_pin text, p_id uuid)
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare e text := public._pin_error(p_pin); n int;
 begin
+  perform public._actor('Gestión');
   if e is not null then return json_build_object('error', e); end if;
   if exists (select 1 from guests where collector_id = p_id and paid) then
     return json_build_object('error','Ya le han pagado: desactívalo en vez de borrarlo, así no se pierden las cuentas');
@@ -627,6 +692,7 @@ create or replace function public.admin_collectors_reshuffle(p_pin text)
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare e text := public._pin_error(p_pin); n int;
 begin
+  perform public._actor('Gestión');
   if e is not null then return json_build_object('error', e); end if;
   if not exists (select 1 from collectors where active) then return json_build_object('error','No hay recaudadores activos'); end if;
   update guests set collector_id = null where not paid;
@@ -680,6 +746,7 @@ create or replace function public.admin_settings_save(p_pin text, p jsonb)
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare e text := public._pin_error(p_pin);
 begin
+  perform public._actor('Gestión');
   if e is not null then return json_build_object('error', e); end if;
   if coalesce(trim(p->>'whatsapp_url'),'') <> '' and split_part(trim(p->>'whatsapp_url'),'?',1) !~ '^https://chat\.whatsapp\.com/[A-Za-z0-9]+$' then
     return json_build_object('error','El enlace del grupo debe ser una invitación de WhatsApp: https://chat.whatsapp.com/…');
