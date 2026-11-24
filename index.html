@@ -61,6 +61,23 @@ a{color:var(--gold);text-underline-offset:3px}
 .count span{font-size:13px;color:#e8c7d7;font-weight:600}
 .cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:26px}
 
+/* ---------- vídeo de fondo ---------- */
+.bgvid{position:fixed;inset:0;z-index:-1;background:#1d0618 var(--poster,none) center/cover no-repeat}
+.bgvid video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.2s ease}
+.bgvid video.on{opacity:1}
+.bgshade{position:absolute;inset:0;background:linear-gradient(180deg,#1d061833 0%,#1d061855 35%,#1d0618b3 75%,#1d0618d9 100%)}
+html.has-vid body{background:transparent}
+html.has-vid .sky{background:linear-gradient(180deg,transparent 0%,transparent 70%,#1d061866 100%)}
+html.has-vid .sky canvas{display:none}
+html.has-vid .card,html.has-vid .fact,html.has-vid .ticket .body,html.has-vid .stat{background:#2b0b24cc;-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);border-color:#ffffff1a}
+html.has-vid .ticket{background:transparent}
+html.has-vid .ticket .body{border-radius:0 0 24px 24px}
+html.has-vid .fact.money{background:var(--gold)}
+html.has-vid .hero h1{text-shadow:0 2px 24px #000a,0 0 50px #e5242f55}
+html.has-vid .when,html.has-vid .count span{text-shadow:0 1px 8px #000c}
+html.has-vid .count div{background:#1d061866;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+@media(prefers-reduced-motion:reduce){.bgvid video{display:none}}
+
 /* ---------- botones y campos ---------- */
 button,input,select,textarea{font:inherit;font-size:16px;color:inherit}
 button{cursor:pointer}
@@ -321,6 +338,7 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 </style>
 </head>
 <body>
+<div class="bgvid" aria-hidden="true"><video id="bgv" muted loop playsinline preload="none" disablepictureinpicture></video><div class="bgshade"></div></div>
 <header class="sky" id="sky">
   <canvas id="fw" aria-hidden="true"></canvas>
   <div class="wrap">
@@ -385,10 +403,21 @@ async function rpc(fn,args={}){
  return j;
 }
 
+/* ================= vídeo de fondo ================= */
+{const v=$('bgv'),wrap=v.parentElement,saveData=navigator.connection&&navigator.connection.saveData;
+ const mq=matchMedia('(max-aspect-ratio: 4/5), (max-width: 700px)');
+ const pick=()=>{const name=mq.matches?'fondo-movil':'fondo-ordenador';if(v.dataset.name===name)return;v.dataset.name=name;
+  wrap.style.setProperty('--poster',`url(media/${name}.jpg)`);document.documentElement.classList.add('has-vid');
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches||saveData)return;
+  v.classList.remove('on');v.src=`media/${name}.mp4`;v.load();const p=v.play();if(p&&p.catch)p.catch(()=>{})};
+ v.addEventListener('playing',()=>v.classList.add('on'));
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)v.pause();else if(v.src&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const p=v.play();if(p&&p.catch)p.catch(()=>{})}});
+ (mq.addEventListener?mq.addEventListener('change',pick):mq.addListener(pick));pick()}
+
 /* ================= decoración y cuenta atrás ================= */
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let fw=null;
-try{if(window.Fireworks&&!reduceMotion){fw=new Fireworks.Fireworks($('fw'),{autoresize:true,opacity:.45,acceleration:1.02,friction:.97,gravity:1.4,particles:60,traceLength:3,traceSpeed:10,explosion:5,intensity:4,flickering:40,lineStyle:'round',
+try{if(window.Fireworks&&!reduceMotion&&!document.documentElement.classList.contains('has-vid')){fw=new Fireworks.Fireworks($('fw'),{autoresize:true,opacity:.45,acceleration:1.02,friction:.97,gravity:1.4,particles:60,traceLength:3,traceSpeed:10,explosion:5,intensity:4,flickering:40,lineStyle:'round',
  hue:{min:0,max:60},delay:{min:50,max:90},rocketsPoint:{min:15,max:85},lineWidth:{explosion:{min:1,max:3},trace:{min:1,max:2}},brightness:{min:55,max:85},decay:{min:.015,max:.03},mouse:{click:false,move:false},sound:{enabled:false}});
  const io=new IntersectionObserver(([e])=>{try{e.isIntersecting?fw.start():fw.stop()}catch(x){}});io.observe($('sky'));setTimeout(()=>{try{fw.start();fw.launch(4)}catch(x){}},400)}}catch(e){fw=null}
 function party(){if(reduceMotion||!window.confetti)return;try{const c={colors:['#e5242f','#ffc93a','#5fae1e','#ffffff'],disableForReducedMotion:true};
