@@ -132,7 +132,38 @@ alter table public.settings   enable row level security;
 alter table public.collectors enable row level security;
 alter table public.guests     enable row level security;
 alter table public.items      enable row level security;
-revoke all on public.settings, public.collectors, public.guests, public.items from anon, authenticated;
+
+-- Intentos fallidos por dispositivo (IP): quien prueba PINs solo se bloquea a sí mismo
+create table if not exists public.attempts (k text primary key, n int not null default 0, since timestamptz not null default now());
+alter table public.attempts enable row level security;
+-- Quitar bloqueos antiguos (los contadores globales ya no se usan)
+update public.settings set fail_count = 0, fail_since = null where fail_count > 0;
+update public.guests set login_fails = 0, login_fail_since = null, login_fails_total = 0 where login_fails > 0 or login_fails_total > 0;
+
+create or replace function public._client_ip()
+returns text language plpgsql stable as $$
+declare h json;
+begin
+  begin h := nullif(current_setting('request.headers', true), '')::json; exception when others then h := null; end;
+  return coalesce(nullif(trim(h->>'cf-connecting-ip'),''), nullif(trim(h->>'x-real-ip'),''),
+                  nullif(trim(split_part(h->>'x-forwarded-for', ',', 1)),''), 'local');
+end $$;
+
+create or replace function public._blocked(p_k text, p_max int)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists(select 1 from attempts where k = p_k and n >= p_max and since > now() - interval '15 minutes')
+$$;
+
+create or replace function public._fail(p_k text)
+returns void language plpgsql volatile security definer set search_path = public as $$
+begin
+  delete from attempts where since < now() - interval '1 day';
+  insert into attempts as a (k, n, since) values (p_k, 1, now())
+  on conflict (k) do update set
+    n = case when a.since > now() - interval '15 minutes' then a.n + 1 else 1 end,
+    since = case when a.since > now() - interval '15 minutes' then a.since else now() end;
+end $$;
+revoke all on public.settings, public.collectors, public.guests, public.items, public.attempts from anon, authenticated;
 
 -- Versiones antiguas de funciones cuyos parámetros han cambiado
 drop function if exists public._check_pin(text);
@@ -321,21 +352,16 @@ begin
   if g.pin_hash is null then
     return json_build_object('error','Todavía no tienes PIN. Pide tu enlace a un gestor (o a quien te apuntó) y créalo desde tu ficha.');
   end if;
-  if g.login_fails_total >= 15 then
-    return json_build_object('error','Acceso bloqueado por demasiados intentos. Pide tu enlace a un gestor y crea un PIN nuevo.');
-  end if;
-  if g.login_fails >= 5 and g.login_fail_since > now() - interval '15 minutes' then
+  -- 5 fallos por dispositivo y 30 en total cada 15 minutos (frena a quien pruebe desde muchos sitios)
+  if public._blocked('g|'||g.id||'|'||public._client_ip(), 5) or public._blocked('g|'||g.id, 30) then
     return json_build_object('error','Demasiados intentos. Espera 15 minutos.');
   end if;
   if crypt(p_pin, g.pin_hash) <> g.pin_hash then
-    update guests set
-      login_fails = case when login_fail_since > now() - interval '15 minutes' then login_fails + 1 else 1 end,
-      login_fail_since = case when login_fail_since > now() - interval '15 minutes' then login_fail_since else now() end,
-      login_fails_total = login_fails_total + 1
-    where id = g.id;
+    perform public._fail('g|'||g.id||'|'||public._client_ip());
+    perform public._fail('g|'||g.id);
     return json_build_object('error', bad);
   end if;
-  update guests set login_fails = 0, login_fail_since = null where id = g.id and login_fails > 0;
+  delete from attempts where k = 'g|'||g.id||'|'||public._client_ip();
   return json_build_object('token', g.token);
 end $$;
 
@@ -453,16 +479,15 @@ declare s settings;
 begin
   select * into s from settings where id = 1 for update;
   if s.admin_pin_hash is null then return 'Todavía no hay PIN de gestor'; end if;
-  if s.fail_count >= 8 and s.fail_since > now() - interval '15 minutes' then
-    return 'Demasiados intentos. Espera 15 minutos.';
+  -- El bloqueo es solo para el dispositivo que falla, no para todos los gestores
+  if public._blocked('admin|'||public._client_ip(), 8) then
+    return 'Demasiados intentos desde este dispositivo. Espera 15 minutos.';
   end if;
   if crypt(coalesce(p_pin,''), s.admin_pin_hash) <> s.admin_pin_hash then
-    update settings set fail_count = case when fail_since > now() - interval '15 minutes' then fail_count + 1 else 1 end,
-                        fail_since = case when fail_since > now() - interval '15 minutes' then fail_since else now() end
-    where id = 1;
+    perform public._fail('admin|'||public._client_ip());
     return 'PIN incorrecto';
   end if;
-  update settings set fail_count = 0, fail_since = null where id = 1 and fail_count > 0;
+  delete from attempts where k = 'admin|'||public._client_ip();
   return null;
 end $$;
 
