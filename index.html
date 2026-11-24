@@ -71,6 +71,9 @@ html.has-vid .sky canvas{display:none}
 html.has-vid .hero h1{text-shadow:0 2px 24px #000a,0 0 50px #e5242f55}
 html.has-vid .when,html.has-vid .count span{text-shadow:0 1px 8px #000c}
 html.has-vid .count div{background:#1d061866;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.soon{display:flex;gap:12px;align-items:flex-start;margin:0 0 18px;padding:14px 16px;border-radius:16px;background:#ffc93a1a;border:1px solid #ffc93a66;color:#fff7ea;font-size:15px;line-height:1.45}
+.soon svg{flex:none;width:22px;height:22px;color:var(--gold);margin-top:1px}
+.soon b{display:block;color:var(--gold);font-size:16px;margin-bottom:2px}
 @media(prefers-reduced-motion:reduce){.bgvid video{display:none}}
 
 /* ---------- botones y campos ---------- */
@@ -409,6 +412,10 @@ async function rpc(fn,args={}){
  document.addEventListener('visibilitychange',()=>{if(document.hidden)v.pause();else if(v.src&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const p=v.play();if(p&&p.catch)p.catch(()=>{})}});
  (mq.addEventListener?mq.addEventListener('change',pick):mq.addListener(pick));pick()}
 
+/* Pagos aún cerrados: de momento solo se tantea quién viene. Poner a false para abrirlos. */
+const PAY_LATER=true;
+const SOON_HTML=`<div class="soon" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><b>Todavía no hay que pagar</b>Ahora solo queremos saber cuántos vendríais para organizarlo todo. Os avisaremos por WhatsApp cuando toque pagar.</span></div>`;
+
 /* ================= decoración y cuenta atrás ================= */
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let fw=null;
@@ -438,7 +445,7 @@ function paintInfo(ev,money){const name=ev.event_name||'Nochevieja 2026',parts=n
  $('i-end').textContent=ev.end_time?'Las '+ev.end_time:'Que aguante el cuerpo';
  const pp=ev.price_hint||(money&&money.per_person?eur(money.per_person):'');
  $('i-money').classList.toggle('hidden',!pp);$('i-pp').textContent=pp;$('i-ppnote').textContent=ev.price_hint?'precio orientativo':'aprox., según cuánta gente venga';
- $('i-notes').textContent=[ev.notes||'',ev.pay_deadline?`Hay que pagar antes del ${fdate(ev.pay_deadline)}.`:''].filter(Boolean).join(' ');
+ $('i-notes').textContent=[ev.notes||'',ev.pay_deadline&&!PAY_LATER?`Hay que pagar antes del ${fdate(ev.pay_deadline)}.`:''].filter(Boolean).join(' ');
 }
 // Prepara la página: 'ticket' (inicio y ficha) o 'wide' (gestión y recaudador)
 function layout(mode,title,sub){$('factsWrap').classList.toggle('hidden',mode!=='ticket');$('below').innerHTML='';$('below').className=mode==='wide'?'wrap':'narrow';
@@ -494,6 +501,7 @@ async function viewHome(){nav('home');const v=layout('ticket');
    <div class="stub"><div class="tabs2" role="tablist"><button type="button" role="tab" data-pane="up" class="${pane==='up'?'on':''}" aria-selected="${pane==='up'}">Me apunto</button><button type="button" role="tab" data-pane="in" class="${pane==='in'?'on':''}" aria-selected="${pane==='in'}">Ya estoy dentro</button></div>
     ${pane==='up'?stubUp:`<p>Entra con tu teléfono y tu PIN para ver tu entrada.</p>`}</div>
    <div class="body" id="entrar">
+   ${pane==='up'&&PAY_LATER?SOON_HTML:''}
    ${pane==='in'?`<form class="stack-form" id="login" autocomplete="on">
      <label class="f">Teléfono<input type="tel" id="l-phone" required maxlength="30" inputmode="tel" autocomplete="tel" placeholder="600 000 000"></label>
      <label class="f">PIN<input type="password" id="l-pin" class="pinbox" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password"></label>
@@ -600,9 +608,10 @@ async function viewMe(tok){
  const stub=out?`<p style="margin:0">Tu entrada</p><h2>${esc(g.name)}</h2><p>Has marcado que no vienes. Si cambias de idea, actualízalo más abajo.</p>`
   :waiting?`<p style="margin:0">${esc(g.name)}, estás en la lista de espera</p><div class="due"><span class="big">Puesto ${esc(g.wait_pos)}</span></div><p>Si alguien se da de baja pasas solo, y aquí verás lo que te toca pagar.</p>`
   :`<p style="margin:0">${isNew?'¡Ya estás dentro, ':'Hola, '}${esc(g.name)}${isNew?'!':''}</p><div class="due"><span class="big">${eur(m.per_person)}</span>${g.paid?'<span class="stamp paid">Pagado</span>':''}</div>
-    <p>${g.paid?'Tu parte está pagada. ¡Nos vemos el 31!':g.claimed?'Has avisado de que ya pagaste. Falta que tu recaudador lo confirme.':`Es lo que te toca poner${ev.pay_deadline?`, antes del ${fdate(ev.pay_deadline)}`:''}.`}${g.status==='quiza'?' Has marcado «quizá».':''}</p>`;
+    <p>${g.paid?'Tu parte está pagada. ¡Nos vemos el 31!':g.claimed?'Has avisado de que ya pagaste. Falta que tu recaudador lo confirme.':PAY_LATER?'Es lo que saldría por persona, aproximadamente.':`Es lo que te toca poner${ev.pay_deadline?`, antes del ${fdate(ev.pay_deadline)}`:''}.`}${g.status==='quiza'?' Has marcado «quizá».':''}</p>`;
  const body=out||waiting?`<p style="margin:0">${d.invited_by?`Te apuntó ${esc(d.invited_by)}. `:''}Mientras tanto, guarda tu enlace para volver.</p>`
   :g.paid?`<p style="margin:0">${d.invited_by?`Te apuntó ${esc(d.invited_by)}. `:''}No tienes que hacer nada más.</p>`
+  :PAY_LATER&&!g.claimed?SOON_HTML+`<p style="margin:0">${d.invited_by?`Te apuntó ${esc(d.invited_by)}. `:''}Guarda tu enlace para volver cuando se abran los pagos.</p>`
   :c?`<span class="sub" style="display:block;margin:0 0 2px">${cash?'Dale el dinero en mano a':'Haz un Bizum a'}</span>
     <div class="paybox"><span class="who">${esc(c.name)}</span>${!cash&&c.phone?`<button class="btn2 sm" type="button" id="me-copynum">Copiar número</button><span class="num">${esc(c.phone)}</span>`:''}</div>
     ${!cash?`<div class="callout"><div class="paybox"><span><span class="sub" style="display:block;margin:0;font-size:14px">Con el concepto</span><b>${esc(concept(g.name))}</b></span><button class="btn2 sm" type="button" id="me-copyconcept">Copiar</button></div></div>`:''}
