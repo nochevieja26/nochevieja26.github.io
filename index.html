@@ -230,12 +230,14 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 .meter.big{height:12px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:10px}
 .meter.big i{display:block;height:100%;background:var(--grape);transition:width .2s}
 .scanlist{display:grid;gap:8px}
-.scanrow{display:grid;grid-template-columns:44px minmax(0,1fr) 110px minmax(0,.8fr);gap:8px;align-items:center}
+.scanrow{display:grid;grid-template-columns:44px minmax(0,1fr) 64px 104px minmax(0,.8fr);gap:8px;align-items:center}
 .scanrow.off{opacity:.45}
 .scanrow input,.scanrow select{min-height:42px;padding:6px 10px;font-size:15px;border-width:1px;border-radius:10px}
-.scanrow .amt{text-align:end}
+.scanrow .amt,.scanrow .qty{text-align:end}
+.scanhead{display:grid;grid-template-columns:44px minmax(0,1fr) 64px 104px minmax(0,.8fr);gap:8px;font-size:12px;font-weight:600;color:var(--mute);padding:0 0 2px}
+.scanhead span:nth-child(3),.scanhead span:nth-child(4){text-align:end}
 .scansum{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-size:15px}
-@media(max-width:700px){.scanrow{grid-template-columns:40px minmax(0,1fr) 96px;background:var(--card2);border-radius:14px;padding:8px}.scanrow select{grid-column:2/-1}}
+@media(max-width:700px){.scanhead{display:none}.scanrow{grid-template-columns:40px minmax(0,1fr) 64px 92px;background:var(--card2);border-radius:14px;padding:8px}.scanrow [data-s=name]{grid-column:2/-1}.scanrow .qty{grid-column:2}.scanrow .amt{grid-column:3/-1}.scanrow select{grid-column:2/-1}}
 .pinshow{display:inline-flex;align-items:center;gap:6px;margin-top:6px;background:var(--gold-bg);color:#ffd96a;border-radius:10px;padding:4px 10px;font-size:14px}
 .pinshow b{font:700 16px Unbounded,sans-serif;letter-spacing:.18em;color:var(--gold)}
 .lines.comp li{align-items:center}
@@ -776,14 +778,30 @@ async function ocrTicket(file,onProgress){
  try{await w.setParameters({preserve_interword_spaces:'1'});const {data}=await w.recognize(img);return data.text}finally{await w.terminate()}}
 const SKIP_RE=/\b(sub-?total|total|iva|i\.v\.a|base|cuota|cambio|entregad|efectivo|tarjeta|visa|master|importe|pagad|devoluc|redondeo|nif|cif|tel[eé]?f|fecha|hora|factura|gracias|operaci|autoriz|bizum|contactless|saldo|puntos|ahorro)/i;
 const PRICE_RE=/(-?\d{1,4}(?:[.\s]\d{3})*[,.]\d{2})\s*(?:€|eur|e)?\s*[a-z*]?\s*$/i;
-function parseTicket(text){const items=[];let total=null;
- for(let raw of String(text||'').split(/\n+/)){const line=raw.replace(/[|_~`'"]/g,' ').replace(/\s+/g,' ').trim();if(line.length<3)continue;
-  const m=line.match(PRICE_RE);if(!m)continue;const amount=parseFloat(m[1].replace(/[.\s](?=\d{3}\b)/g,'').replace(',','.'));if(!isFinite(amount)||amount===0)continue;
-  if(/^\s*(importe\s+)?total\b|total\s*(a\s*pagar|compra|€|eur)/i.test(line)&&!/sub/i.test(line)){total=Math.abs(amount);continue}
-  if(SKIP_RE.test(line))continue;
-  let name=line.slice(0,m.index).replace(/^\d+\s*[x×*]\s*/i,'').replace(/\s\d+[,.]\d{2}\s*(?:€|eur)?\s*$/i,'').replace(/^\d{1,3}\s+(?=\D)/,'').replace(/[^\p{L}\p{N}%.,()\/ -]/gu,' ').replace(/\s+/g,' ').trim();
-  if(name.replace(/[^\p{L}]/gu,'').length<2)continue;
-  items.push({name:name.slice(0,80),amount:Math.round(amount*100)/100})}
+const QTY_X=/(\d{1,3})\s*(?:ud[s.]?\s*)?[x×*]\s*(\d{1,4}[,.]\d{2})/i;
+const toNum=t=>parseFloat(String(t).replace(/[.\s](?=\d{3}\b)/g,'').replace(',','.'));
+function parseTicket(text){const items=[];let total=null,pendingQ=null,lastName=null;
+ const cleanName=t=>t.replace(QTY_X,' ').replace(/^\d{1,2}\s+(?=\D)/,'').replace(/\s\d{1,4}[,.]\d{2}\s*(?:€|eur)?\s*$/i,'').replace(/^\s*(?:ud[s.]?|uds?)\s+/i,'').replace(/[^\p{L}\p{N}%.,()\/ -]/gu,' ').replace(/\s+/g,' ').trim();
+ const push=(name,amount,q)=>{q=q&&q>0&&q<1000?q:1;items.push({name:name.slice(0,80),amount:Math.round(amount*100)/100,q})};
+ for(let raw of String(text||'').split(/\n+/)){const line=raw.replace(/[|_~`'"]/g,' ').replace(/\s+/g,' ').trim();if(line.length<2)continue;
+  const m=line.match(PRICE_RE),before=m?line.slice(0,m.index):line,qx=line.match(QTY_X);
+  const letters=cleanName(before).replace(/[^\p{L}]/gu,'').length;
+  if(!m){ // línea sin importe: o nombre suelto, o «3 x 1,50» para la siguiente
+   if(qx&&letters<2){pendingQ=parseInt(qx[1]);continue}
+   if(letters>=2&&!SKIP_RE.test(line)){lastName=cleanName(line);if(qx)pendingQ=parseInt(qx[1])}
+   continue}
+  const amount=toNum(m[1]);if(!isFinite(amount)||amount===0){continue}
+  if(/^\s*(importe\s+)?total\b|total\s*(a\s*pagar|compra|€|eur)/i.test(line)&&!/sub/i.test(line)){total=Math.abs(amount);lastName=null;pendingQ=null;continue}
+  if(SKIP_RE.test(line)){lastName=null;continue}
+  if(letters<2){ // «3 x 1,50   4,50» debajo del nombre
+   if(qx&&lastName){push(lastName,amount,parseInt(qx[1]));lastName=null;pendingQ=null}
+   else if(qx)pendingQ=parseInt(qx[1]);
+   continue}
+  let q=null;const lead=before.match(/^\s*(\d{1,2})\s+(?=\D)/);
+  if(qx)q=parseInt(qx[1]);else if(lead)q=parseInt(lead[1]);else if(pendingQ)q=pendingQ;
+  // si hay precio unitario y no cuadra con la cantidad, nos fiamos del importe y del unitario
+  if(qx){const unit=toNum(qx[2]);if(unit>0&&Math.abs(unit*q-amount)>0.05){const g=Math.round(amount/unit);if(g>=1&&Math.abs(unit*g-amount)<=0.05)q=g}}
+  push(cleanName(before),amount,q);pendingQ=null;lastName=null}
  return{items,total}}
 let scan=null; // {state:'reading'|'review', progress, items, total, error}
 function scanHtml(){if(!scan)return'';
@@ -793,10 +811,12 @@ function scanHtml(){if(!scan)return'';
  const sum=scan.items.filter(i=>i.on).reduce((a,i)=>a+num(i.amount),0);
  return `<section class="card scan"><h2>Revisa el ticket</h2>
   <p class="sub">${scan.items.length?'Corrige lo que haga falta, quita lo que no sea de la fiesta y elige a qué cosa de la lista va cada línea.':'No he encontrado líneas con precio. Puedes añadir el total a mano o probar con otra foto más recta y con buena luz.'}</p>
+  ${scan.items.length?'<div class="scanhead"><span></span><span>Concepto</span><span>Cant.</span><span>Importe</span><span>Va a</span></div>':''}
   <div class="scanlist">${scan.items.map((it,i)=>`<div class="scanrow${it.on?'':' off'}" data-i="${i}">
    <label class="tick"><input type="checkbox" data-s="on"${it.on?' checked':''} aria-label="Incluir"></label>
    <input type="text" data-s="name" value="${esc(it.name)}" maxlength="80" aria-label="Concepto">
-   <input type="number" data-s="amount" value="${esc(it.amount)}" min="0" step="0.01" aria-label="Importe" class="amt">
+   <input type="number" data-s="q" value="${esc(it.q||1)}" min="1" step="1" aria-label="Cantidad" class="qty" title="Cantidad">
+   <input type="number" data-s="amount" value="${esc(it.amount)}" min="0" step="0.01" aria-label="Importe total de la línea" class="amt">
    <select data-s="to" aria-label="Asignar a">${opts.map(([v,l])=>`<option value="${esc(v)}"${it.to===v?' selected':''}>${esc(l)}</option>`).join('')}</select></div>`).join('')}</div>
   <button class="ghost" type="button" id="scanAdd" style="padding:0;margin-top:8px">+ Añadir una línea a mano</button>
   <div class="scansum"><span>Seleccionado: <b>${eur(sum)}</b></span>${scan.total!=null?`<span>Total del ticket: <b>${eur(scan.total)}</b>${Math.abs(scan.total-sum)>0.01?' <span class="tag gold">no cuadra</span>':' <span class="tag">cuadra</span>'}</span>`:''}</div>
@@ -808,19 +828,20 @@ function bindScan(){const box=$('pane').querySelector('.scan');if(!box)return;
  $('scanClose')&&$('scanClose').addEventListener('click',()=>{scan=null;redraw()});
  $('scanAgain')&&$('scanAgain').addEventListener('click',()=>{scan=null;redraw();$('scanFile').click()});
  box.addEventListener('change',e=>{const row=e.target.closest('.scanrow');if(!row)return;const it=scan.items[+row.dataset.i],k=e.target.dataset.s;
-  it[k]=k==='on'?e.target.checked:k==='amount'?num(e.target.value):e.target.value;redraw()});
- $('scanAdd')&&$('scanAdd').addEventListener('click',()=>{scan.items.push({name:'',amount:0,on:true,to:'new'});redraw();const r=$('pane').querySelectorAll('.scanrow');r[r.length-1]?.querySelector('[data-s=name]').focus()});
+  it[k]=k==='on'?e.target.checked:k==='amount'?num(e.target.value):k==='q'?Math.max(1,Math.round(num(e.target.value))||1):e.target.value;redraw()});
+ $('scanAdd')&&$('scanAdd').addEventListener('click',()=>{scan.items.push({name:'',amount:0,q:1,on:true,to:'new'});redraw();const r=$('pane').querySelectorAll('.scanrow');r[r.length-1]?.querySelector('[data-s=name]').focus()});
  const save=async lines=>{const msg=$('scanMsg');msg.className='msg';msg.textContent='Guardando…';
   try{const add={};
    for(const l of lines){if(!(num(l.amount)>0))continue;
-    if(l.to==='new')await rpc('admin_item_save',{p_pin:pin(),p_id:null,p_name:(l.name||'Ticket').slice(0,120),p_cat:'Otros',p_q:1,p_p:num(l.amount),p_who:'',p_done:true,p_opt:false,p_spent:num(l.amount)});
+    const q=Math.max(1,Math.round(num(l.q))||1);
+    if(l.to==='new')await rpc('admin_item_save',{p_pin:pin(),p_id:null,p_name:(l.name||'Ticket').slice(0,120),p_cat:'Otros',p_q:q,p_p:Math.round(num(l.amount)/q*100)/100,p_who:'',p_done:true,p_opt:false,p_spent:num(l.amount)});
     else add[l.to]=(add[l.to]||0)+num(l.amount)}
    for(const [id,amt] of Object.entries(add)){const i=A.items.find(x=>x.id===id);if(!i)continue;
     await rpc('admin_item_save',{p_pin:pin(),p_id:i.id,p_name:i.name,p_cat:i.cat,p_q:num(i.q),p_p:num(i.p),p_who:i.who,p_done:true,p_opt:!!i.opt,p_spent:Math.round((num(i.spent)+amt)*100)/100})}
    scan=null;A=await rpc('admin_state',{p_pin:pin()});paintInfo(A.event,A.money);renderAdmin();$('aMsg').className='msg ok';$('aMsg').textContent='Ticket guardado en gastos.'}
   catch(err){msg.className='msg err';msg.textContent=err.message}};
  $('scanSave')&&$('scanSave').addEventListener('click',()=>save(scan.items.filter(i=>i.on)));
- $('scanTotal')&&$('scanTotal').addEventListener('click',()=>save([{name:'Ticket '+new Date().toLocaleDateString('es-ES',{day:'numeric',month:'short'}),amount:scan.total,to:'new'}]));
+ $('scanTotal')&&$('scanTotal').addEventListener('click',()=>save([{name:'Ticket '+new Date().toLocaleDateString('es-ES',{day:'numeric',month:'short'}),amount:scan.total,q:1,to:'new'}]));
 }
 async function startScan(file){if(!file)return;scan={state:'reading',progress:0};paneCompra();
  try{const text=await ocrTicket(file,p=>{if(scan&&scan.state==='reading'){scan.progress=p;const i=$('pane').querySelector('.scan .meter i');if(i)i.style.width=Math.round(p*100)+'%'}});
