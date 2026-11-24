@@ -265,6 +265,16 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 .lines.comp li>span{display:grid;justify-items:start}
 /* Gente: una tarjeta por persona */
 .people{display:grid;gap:12px}
+.gfil{display:grid;gap:10px;margin:14px 0 6px}
+.gfil .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.gfil .gl{font-size:13px;color:var(--muted,#c9a9bd);min-width:64px}
+.gfil button{font:inherit;font-size:14px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid #ffffff26;background:transparent;color:inherit;cursor:pointer}
+.gfil button em{font-style:normal;opacity:.65;margin-left:5px;font-weight:500}
+.gfil button.on{background:#fff7ea;color:#2b0b24;border-color:#fff7ea}
+.gfil button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.gcount{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;margin:4px 0 10px}
+.tag.new{background:var(--grape-bg);color:#c9f59b}
+@media(max-width:560px){.gfil .gl{min-width:0;width:100%}}
 .pcard{background:var(--card2);border-radius:18px;padding:14px 16px;display:grid;gap:12px}
 .pcard.out{opacity:.6}
 .phead{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}
@@ -720,6 +730,7 @@ async function viewCollector(tok){nav('');const v=layout('wide','Tus cobros','Co
 
 /* ================= vista: gestión ================= */
 let A=null,tab=sess.get('nv_tab')||'gente',filter='';
+let GF={sort:'az',st:'',pay:'',m:''};try{GF={...GF,...JSON.parse(sess.get('nv_gf')||'{}')}}catch(e){}
 const pin=()=>sess.get('nv_pin');
 async function viewAdmin(){nav('admin');const v=layout('wide','Gestión de la fiesta','Solo para quienes organizan.');
  if(!pin()){const d=await rpc('public_info');paintInfo(d.event,d.money);
@@ -766,11 +777,23 @@ const ICON_LINK='<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="tr
 const STATUS_ADMIN={si:'Sí',quiza:'Quizá',espera:'En espera',no:'No'};
 function adminRemind(g){const c=A.collectors.find(x=>x.id===g.collector_id),ev=A.event,m=A.money;
  return `Hola ${g.name}! Te falta pagar ${eur(m.per_person)} de la Nochevieja${ev.pay_deadline?` (antes del ${fdate(ev.pay_deadline)})`:''}. ${c?(g.pay_method==='efectivo'?`Dáselo en mano a ${c.name}.`:`Haz el Bizum a ${c.name} (${c.phone}) con el concepto «${concept(g.name)}».`):''} Tu ficha: ${personalLink(g.token)}`}
-function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone).toLowerCase().includes(filter.toLowerCase()));
+const GF_GROUPS=[['sort','Orden',[['az','A–Z'],['new','Recientes primero']]],
+ ['st','Viene',[['','Todos'],['si','Sí'],['quiza','Quizá'],['espera','En espera'],['no','No']]],
+ ['pay','Pago',[['','Todos'],['sin','Sin pagar'],['dice','Dice que pagó'],['ok','Pagado']]],
+ ['m','Cómo',[['','Todos'],['bizum','Bizum'],['efectivo','Efectivo']]]];
+const gfTest={st:(g,v)=>g.status===v,pay:(g,v)=>v==='ok'?g.paid:v==='dice'?!g.paid&&g.claimed:!g.paid,m:(g,v)=>g.pay_method===v};
+const isNew=g=>g.created_at&&Date.now()-new Date(g.created_at).getTime()<48*3600e3;
+const agoTxt=d=>{const h=Math.floor((Date.now()-new Date(d).getTime())/3600e3);return h<1?'hace un rato':h<24?`hace ${h} h`:`hace ${Math.floor(h/24)} d`};
+function paneGente(){const q=filter.toLowerCase(),pass=(g,skip)=>(!q||(g.name+' '+g.phone).toLowerCase().includes(q))&&['st','pay','m'].every(k=>k===skip||!GF[k]||gfTest[k](g,GF[k]));
+ const G=A.guests.filter(g=>pass(g)).sort((a,b)=>GF.sort==='new'?String(b.created_at||'').localeCompare(String(a.created_at||'')):0);
+ const active=['st','pay','m'].some(k=>GF[k])||q;
+ const gfil=`<div class="gfil" role="group" aria-label="Filtrar gente">${GF_GROUPS.map(([k,label,opts])=>`<div class="grp"><span class="gl">${label}</span>${opts.map(([v,l])=>{const n=k==='sort'||!v?'':A.guests.filter(g=>pass(g,k)&&gfTest[k](g,v)).length;
+   return `<button type="button" data-gf="${k}" data-v="${v}" class="${GF[k]===v?'on':''}" aria-pressed="${GF[k]===v}">${l}${n!==''?`<em>${n}</em>`:''}</button>`}).join('')}</div>`).join('')}</div>
+  <div class="gcount"><span>${active?`Mostrando ${G.length} de ${A.guests.length}`:''}</span>${active?'<button class="ghost" type="button" id="gfClear">Quitar filtros</button>':''}</div>`;
  const sel=(f,label,opts,cur)=>`<label>${label}<select data-f="${f}">${opts.map(([v,l])=>`<option value="${esc(v)}"${String(cur??'')===String(v)?' selected':''}>${esc(l)}</option>`).join('')}</select></label>`;
  $('pane').innerHTML=`<section class="card"><div class="row" style="justify-content:space-between"><h2>Gente (${A.guests.length})</h2>
   <input type="search" id="q" placeholder="Buscar" value="${esc(filter)}" style="max-width:240px" aria-label="Buscar persona"></div>
-  <p class="sub">Los cambios se guardan solos al tocar cada campo.</p>
+  <p class="sub">Los cambios se guardan solos al tocar cada campo.</p>${gfil}
   <div class="people">${G.map(g=>`<article class="pcard${g.status==='no'?' out':''}" data-id="${esc(g.id)}">
    <div class="phead"><input type="text" data-f="name" value="${esc(g.name)}" maxlength="60" aria-label="Nombre">
     <label class="paidtog"><input type="checkbox" data-f="paid"${g.paid?' checked':''}> ${g.paid?'Pagado':'Sin pagar'}</label>
@@ -782,12 +805,14 @@ function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone).to
     ${sel('collector','Paga a',[['','Sin asignar'],...A.collectors.map(c=>[c.id,c.name+(c.active?'':' (inactivo)')])],g.collector_id||'')}
     ${sel('pay','Cómo',Object.entries(PAY),g.pay_method)}
    </div>
-   <div class="pfoot"><div class="pmeta">${g.brought?`<span class="tag">Ha traído a ${g.brought}</span>`:''}${g.claimed&&!g.paid?'<span class="tag gold">Dice que pagó</span>':''}${g.locked?'<span class="tag red">Bloqueado</span>':g.has_pin?'':'<span class="tag">Sin PIN</span>'}</div>
+   <div class="pfoot"><div class="pmeta">${isNew(g)?`<span class="tag new">Nuevo · ${agoTxt(g.created_at)}</span>`:GF.sort==='new'&&g.created_at?`<span class="tag">Se apuntó ${agoTxt(g.created_at)}</span>`:''}${g.brought?`<span class="tag">Ha traído a ${g.brought}</span>`:''}${g.claimed&&!g.paid?'<span class="tag gold">Dice que pagó</span>':''}${g.locked?'<span class="tag red">Bloqueado</span>':g.has_pin?'':'<span class="tag">Sin PIN</span>'}</div>
     <div class="acts">${g.status==='si'&&!g.paid&&g.phone?`<a class="chipbtn wa" href="${esc(waLink(g.phone,adminRemind(g)))}" target="_blank" rel="noopener" title="Abrir WhatsApp con el recordatorio de pago">${ICON_WA}Recordar</a>`:''}
     <button class="chipbtn" type="button" data-link="${esc(g.token)}" title="Copiar el enlace a su entrada">${ICON_LINK}<span>Enlace</span></button></div></div>
-  </article>`).join('')||'<p class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</p>'}</div>
+  </article>`).join('')||(A.guests.length?'<p class="msg">Nadie cumple estos filtros.</p>':'<p class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</p>')}</div>
   <form class="add three" id="gAdd" autocomplete="off"><input type="text" id="g-name" placeholder="Nombre" required maxlength="60" aria-label="Nombre"><input type="tel" id="g-phone" placeholder="Teléfono (opcional)" maxlength="30" aria-label="Teléfono"><button class="btn" type="submit">Añadir</button></form></section>`;
  $('q').addEventListener('input',e=>{filter=e.target.value;const p=e.target.selectionStart;paneGente();const q=$('q');q.focus();q.setSelectionRange(p,p)});
+ $('pane').querySelectorAll('[data-gf]').forEach(b=>b.addEventListener('click',()=>{GF[b.dataset.gf]=b.dataset.v;sess.set('nv_gf',JSON.stringify(GF));paneGente()}));
+ $('gfClear')&&$('gfClear').addEventListener('click',()=>{GF={sort:GF.sort,st:'',pay:'',m:''};filter='';sess.set('nv_gf',JSON.stringify(GF));paneGente()});
  const list=$('pane').querySelector('.people');
  list.addEventListener('change',e=>{const card=e.target.closest('.pcard');if(!card)return;const val=f=>card.querySelector(`[data-f="${f}"]`);
   act('admin_guest_save',{p_id:card.dataset.id,p_name:val('name').value,p_phone:val('phone').value,p_status:val('status').value,p_brings:null,p_paid:val('paid').checked,p_pay:val('pay').value,p_collector:val('collector').value||null,p_invited_by:val('by').value||null})});
