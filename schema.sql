@@ -36,6 +36,7 @@ alter table public.settings add column if not exists capacity int;            --
 alter table public.settings add column if not exists signup_deadline date;    -- último día para apuntarse (incluido)
 alter table public.settings add column if not exists pay_deadline date;       -- último día para pagar
 alter table public.settings add column if not exists faq jsonb not null default '[]';  -- preguntas frecuentes [{q,a}]
+alter table public.settings add column if not exists price_hint text not null default '';  -- precio orientativo que se enseña en el inicio (vacío = el calculado)
 update public.settings set faq = '[
  {"q":"¿Qué tengo que traer?","a":"Solo tu bebida. El local, el hielo, los vasos, las chuches y la música los pagamos entre todos."},
  {"q":"¿Puedo llevar a alguien?","a":"Sí. Apúntale desde tu entrada, en «Vengo con alguien». Tendrá su propia entrada y pagará su parte."},
@@ -201,7 +202,7 @@ returns json language sql stable security definer set search_path = public as $$
     'notes',notes,'people_override',people_override,'has_pin',admin_pin_hash is not null,
     'admin_contact',admin_contact,'capacity',capacity,
     'signup_deadline',signup_deadline,'pay_deadline',pay_deadline,'signups_open',public._signups_open(),
-    'collectors',(select count(*) from collectors where active),'faq',faq)
+    'collectors',(select count(*) from collectors where active),'faq',faq,'price_hint',price_hint)
   from settings where id = 1;
 $$;
 
@@ -273,14 +274,13 @@ begin
 end $$;
 
 -- ======================= PÚBLICO =======================
--- Sin importes ni lista de gastos: eso solo lo ven los gestores y cada uno en su entrada
+-- Solo lo que pone cada uno; ni total, ni lista de gastos, ni nombres (eso lo ven los gestores)
 create or replace function public.public_info()
 returns json language sql stable security definer set search_path = public as $$
   select json_build_object(
     'event', public._event(),
-    'money', (select json_build_object('si', m->'si', 'quiza', m->'quiza', 'espera', m->'espera', 'capacity', m->'capacity', 'spots_left', m->'spots_left') from (select public._money()::jsonb m) x),
-    'coming', coalesce((select json_agg(json_build_object('name',name,'status',status) order by name)
-                        from guests where status in ('si','quiza')), '[]'::json));
+    'money', (select json_build_object('per_person', m->'per_person', 'si', m->'si', 'quiza', m->'quiza', 'espera', m->'espera', 'capacity', m->'capacity', 'spots_left', m->'spots_left') from (select public._money()::jsonb m) x),
+    'coming', '[]'::json);  -- los nombres de quién viene ya no se enseñan en público
 $$;
 
 create or replace function public.signup(p_name text, p_phone text, p_status text, p_pay text, p_pin text)
@@ -619,6 +619,7 @@ begin
     pay_how    = left(coalesce(p->>'pay_how', pay_how),200),
     notes      = left(coalesce(p->>'notes', notes),400),
     admin_contact = left(coalesce(p->>'admin_contact', admin_contact),120),
+    price_hint = left(trim(coalesce(p->>'price_hint', price_hint)),40),
     whatsapp_url  = case when p ? 'whatsapp_url' then split_part(trim(p->>'whatsapp_url'),'?',1) else whatsapp_url end,
     people_override = case when p ? 'people_override' then nullif(p->>'people_override','')::int else people_override end,
     capacity        = case when p ? 'capacity' then nullif(p->>'capacity','')::int else capacity end,
