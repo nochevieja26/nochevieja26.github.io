@@ -226,6 +226,16 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 .tag{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:700;background:var(--card2);color:var(--mute)}
 .tag.gold{background:var(--gold-bg);color:#ffd96a}
 .tag.red{background:var(--red-bg);color:#ff8a92}
+.scan{margin-bottom:18px;border-color:var(--grape)}
+.meter.big{height:12px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:10px}
+.meter.big i{display:block;height:100%;background:var(--grape);transition:width .2s}
+.scanlist{display:grid;gap:8px}
+.scanrow{display:grid;grid-template-columns:44px minmax(0,1fr) 110px minmax(0,.8fr);gap:8px;align-items:center}
+.scanrow.off{opacity:.45}
+.scanrow input,.scanrow select{min-height:42px;padding:6px 10px;font-size:15px;border-width:1px;border-radius:10px}
+.scanrow .amt{text-align:end}
+.scansum{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-size:15px}
+@media(max-width:700px){.scanrow{grid-template-columns:40px minmax(0,1fr) 96px;background:var(--card2);border-radius:14px;padding:8px}.scanrow select{grid-column:2/-1}}
 .pinshow{display:inline-flex;align-items:center;gap:6px;margin-top:6px;background:var(--gold-bg);color:#ffd96a;border-radius:10px;padding:4px 10px;font-size:14px}
 .pinshow b{font:700 16px Unbounded,sans-serif;letter-spacing:.18em;color:var(--gold)}
 .lines.comp li{align-items:center}
@@ -748,8 +758,79 @@ function paneCol(){const C=A.collectors,unassigned=A.guests.filter(g=>['si','qui
  $('cAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_collector_save',{p_id:null,p_name:$('c-name').value,p_phone:$('c-phone').value,p_active:true})});
  $('reshuffle').addEventListener('click',e=>confirm2(e.target,'¿Seguro? Pulsa otra vez',()=>act('admin_collectors_reshuffle',{})));
 }
+/* ================= lector de tickets (OCR en el navegador) ================= */
+function loadLib(src,globalName){return new Promise((ok,ko)=>{if(window[globalName])return ok();const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>ko(new Error('No se ha podido cargar el lector. Revisa la conexión y prueba otra vez.'));document.head.appendChild(s)})}
+// Reduce la foto y la pasa a gris con más contraste: el OCR acierta bastante más
+async function prepTicketImage(file){
+ let bmp;try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}catch(e){bmp=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ko(new Error('No se puede abrir esa imagen. Prueba con una foto JPG o PNG.'));i.src=URL.createObjectURL(file)})}
+ const sc=Math.min(1,2000/Math.max(bmp.width,bmp.height)),c=document.createElement('canvas');c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
+ const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);
+ const im=x.getImageData(0,0,c.width,c.height),d=im.data;let lo=255,hi=0;const g=new Uint8ClampedArray(d.length/4);
+ for(let i=0,j=0;i<d.length;i+=4,j++){const v=.299*d[i]+.587*d[i+1]+.114*d[i+2];g[j]=v;if(v<lo)lo=v;if(v>hi)hi=v}
+ const k=255/Math.max(1,hi-lo);for(let i=0,j=0;i<d.length;i+=4,j++){const v=Math.min(255,Math.max(0,(g[j]-lo)*k));d[i]=d[i+1]=d[i+2]=v}
+ x.putImageData(im,0,0);return c}
+async function ocrTicket(file,onProgress){
+ await loadLib('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js','Tesseract');
+ const img=await prepTicketImage(file);
+ const w=await Tesseract.createWorker('spa',1,{logger:m=>{if(m.status==='recognizing text')onProgress(m.progress)}});
+ try{await w.setParameters({preserve_interword_spaces:'1'});const {data}=await w.recognize(img);return data.text}finally{await w.terminate()}}
+const SKIP_RE=/\b(sub-?total|total|iva|i\.v\.a|base|cuota|cambio|entregad|efectivo|tarjeta|visa|master|importe|pagad|devoluc|redondeo|nif|cif|tel[eé]?f|fecha|hora|factura|gracias|operaci|autoriz|bizum|contactless|saldo|puntos|ahorro)/i;
+const PRICE_RE=/(-?\d{1,4}(?:[.\s]\d{3})*[,.]\d{2})\s*(?:€|eur|e)?\s*[a-z*]?\s*$/i;
+function parseTicket(text){const items=[];let total=null;
+ for(let raw of String(text||'').split(/\n+/)){const line=raw.replace(/[|_~`'"]/g,' ').replace(/\s+/g,' ').trim();if(line.length<3)continue;
+  const m=line.match(PRICE_RE);if(!m)continue;const amount=parseFloat(m[1].replace(/[.\s](?=\d{3}\b)/g,'').replace(',','.'));if(!isFinite(amount)||amount===0)continue;
+  if(/^\s*(importe\s+)?total\b|total\s*(a\s*pagar|compra|€|eur)/i.test(line)&&!/sub/i.test(line)){total=Math.abs(amount);continue}
+  if(SKIP_RE.test(line))continue;
+  let name=line.slice(0,m.index).replace(/^\d+\s*[x×*]\s*/i,'').replace(/\s\d+[,.]\d{2}\s*(?:€|eur)?\s*$/i,'').replace(/^\d{1,3}\s+(?=\D)/,'').replace(/[^\p{L}\p{N}%.,()\/ -]/gu,' ').replace(/\s+/g,' ').trim();
+  if(name.replace(/[^\p{L}]/gu,'').length<2)continue;
+  items.push({name:name.slice(0,80),amount:Math.round(amount*100)/100})}
+ return{items,total}}
+let scan=null; // {state:'reading'|'review', progress, items, total, error}
+function scanHtml(){if(!scan)return'';
+ if(scan.state==='reading')return `<section class="card scan"><h2>Leyendo el ticket…</h2><p class="sub">La primera vez tarda un poco más: se descarga el lector.</p><div class="meter big"><i style="width:${Math.round((scan.progress||0)*100)}%"></i></div></section>`;
+ if(scan.state==='error')return `<section class="card scan"><h2>No se ha podido leer</h2><p class="msg err">${esc(scan.error)}</p><div class="row" style="margin-top:12px"><button class="btn2 sm" type="button" id="scanAgain">Probar con otra foto</button><button class="ghost" type="button" id="scanClose">Cerrar</button></div></section>`;
+ const opts=[['new','Gasto nuevo'],...A.items.map(i=>[i.id,i.name])];
+ const sum=scan.items.filter(i=>i.on).reduce((a,i)=>a+num(i.amount),0);
+ return `<section class="card scan"><h2>Revisa el ticket</h2>
+  <p class="sub">${scan.items.length?'Corrige lo que haga falta, quita lo que no sea de la fiesta y elige a qué cosa de la lista va cada línea.':'No he encontrado líneas con precio. Puedes añadir el total a mano o probar con otra foto más recta y con buena luz.'}</p>
+  <div class="scanlist">${scan.items.map((it,i)=>`<div class="scanrow${it.on?'':' off'}" data-i="${i}">
+   <label class="tick"><input type="checkbox" data-s="on"${it.on?' checked':''} aria-label="Incluir"></label>
+   <input type="text" data-s="name" value="${esc(it.name)}" maxlength="80" aria-label="Concepto">
+   <input type="number" data-s="amount" value="${esc(it.amount)}" min="0" step="0.01" aria-label="Importe" class="amt">
+   <select data-s="to" aria-label="Asignar a">${opts.map(([v,l])=>`<option value="${esc(v)}"${it.to===v?' selected':''}>${esc(l)}</option>`).join('')}</select></div>`).join('')}</div>
+  <button class="ghost" type="button" id="scanAdd" style="padding:0;margin-top:8px">+ Añadir una línea a mano</button>
+  <div class="scansum"><span>Seleccionado: <b>${eur(sum)}</b></span>${scan.total!=null?`<span>Total del ticket: <b>${eur(scan.total)}</b>${Math.abs(scan.total-sum)>0.01?' <span class="tag gold">no cuadra</span>':' <span class="tag">cuadra</span>'}</span>`:''}</div>
+  <div class="row" style="margin-top:14px"><button class="btn" type="button" id="scanSave"${scan.items.some(i=>i.on)?'':' disabled'}>Guardar en gastos</button>
+   ${scan.total!=null?`<button class="btn2 sm" type="button" id="scanTotal">Guardar solo el total (${eur(scan.total)})</button>`:''}
+   <button class="ghost" type="button" id="scanClose">Cancelar</button></div><p class="msg" id="scanMsg" aria-live="polite"></p></section>`}
+function bindScan(){const box=$('pane').querySelector('.scan');if(!box)return;
+ const redraw=()=>paneCompra();
+ $('scanClose')&&$('scanClose').addEventListener('click',()=>{scan=null;redraw()});
+ $('scanAgain')&&$('scanAgain').addEventListener('click',()=>{scan=null;redraw();$('scanFile').click()});
+ box.addEventListener('change',e=>{const row=e.target.closest('.scanrow');if(!row)return;const it=scan.items[+row.dataset.i],k=e.target.dataset.s;
+  it[k]=k==='on'?e.target.checked:k==='amount'?num(e.target.value):e.target.value;redraw()});
+ $('scanAdd')&&$('scanAdd').addEventListener('click',()=>{scan.items.push({name:'',amount:0,on:true,to:'new'});redraw();const r=$('pane').querySelectorAll('.scanrow');r[r.length-1]?.querySelector('[data-s=name]').focus()});
+ const save=async lines=>{const msg=$('scanMsg');msg.className='msg';msg.textContent='Guardando…';
+  try{const add={};
+   for(const l of lines){if(!(num(l.amount)>0))continue;
+    if(l.to==='new')await rpc('admin_item_save',{p_pin:pin(),p_id:null,p_name:(l.name||'Ticket').slice(0,120),p_cat:'Otros',p_q:1,p_p:num(l.amount),p_who:'',p_done:true,p_opt:false,p_spent:num(l.amount)});
+    else add[l.to]=(add[l.to]||0)+num(l.amount)}
+   for(const [id,amt] of Object.entries(add)){const i=A.items.find(x=>x.id===id);if(!i)continue;
+    await rpc('admin_item_save',{p_pin:pin(),p_id:i.id,p_name:i.name,p_cat:i.cat,p_q:num(i.q),p_p:num(i.p),p_who:i.who,p_done:true,p_opt:!!i.opt,p_spent:Math.round((num(i.spent)+amt)*100)/100})}
+   scan=null;A=await rpc('admin_state',{p_pin:pin()});paintInfo(A.event,A.money);renderAdmin();$('aMsg').className='msg ok';$('aMsg').textContent='Ticket guardado en gastos.'}
+  catch(err){msg.className='msg err';msg.textContent=err.message}};
+ $('scanSave')&&$('scanSave').addEventListener('click',()=>save(scan.items.filter(i=>i.on)));
+ $('scanTotal')&&$('scanTotal').addEventListener('click',()=>save([{name:'Ticket '+new Date().toLocaleDateString('es-ES',{day:'numeric',month:'short'}),amount:scan.total,to:'new'}]));
+}
+async function startScan(file){if(!file)return;scan={state:'reading',progress:0};paneCompra();
+ try{const text=await ocrTicket(file,p=>{if(scan&&scan.state==='reading'){scan.progress=p;const i=$('pane').querySelector('.scan .meter i');if(i)i.style.width=Math.round(p*100)+'%'}});
+  const r=parseTicket(text);scan={state:'review',items:r.items.map(x=>({...x,on:true,to:'new'})),total:r.total}}
+ catch(err){scan={state:'error',error:err.message||'Error al leer la imagen.'}}
+ if(tab==='compra')paneCompra()}
+
 function paneCompra(){const I=A.items,m=A.money;
- $('pane').innerHTML=`<section class="card"><h2>Compra y gastos</h2><p class="sub">«€/ud» es lo previsto y sirve para calcular lo que pone cada uno. Cuando compréis algo, apunta en «Gastado» lo que costó de verdad: así sale el bote disponible. Marca «Extra» para lo que solo se compra si sobra dinero.</p>
+ $('pane').innerHTML=`${scanHtml()}<section class="card"><div class="row" style="justify-content:space-between"><h2>Compra y gastos</h2>
+   <label class="btn green sm" style="cursor:pointer">Escanear ticket<input type="file" id="scanFile" accept="image/*" hidden></label></div><p class="sub">«€/ud» es lo previsto y sirve para calcular lo que pone cada uno. Cuando compréis algo, apunta en «Gastado» lo que costó de verdad: así sale el bote disponible. Marca «Extra» para lo que solo se compra si sobra dinero.</p>
   <div class="scroll"><table class="stack items-t"><thead><tr><th>Qué</th><th>Tipo</th><th class="num">Cant.</th><th class="num">€/ud</th><th class="num">Previsto</th><th class="num">Gastado</th><th>Quién</th><th>Comprado</th><th>Extra</th><th></th></tr></thead><tbody>
   ${I.map(i=>`<tr data-id="${esc(i.id)}">
    <td class="first"><input type="text" data-f="name" value="${esc(i.name)}" maxlength="120" aria-label="Qué" style="min-width:170px"></td>
@@ -771,6 +852,7 @@ function paneCompra(){const I=A.items,m=A.money;
  tb.addEventListener('change',e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const val=f=>tr.querySelector(`[data-f="${f}"]`);const sp=val('spent').value.trim();
   act('admin_item_save',{p_id:tr.dataset.id,p_name:val('name').value,p_cat:val('cat').value,p_q:num(val('q').value),p_p:num(val('p').value),p_who:val('who').value,p_done:val('done').checked,p_opt:val('opt').checked,p_spent:sp===''?null:num(sp)})});
  tb.addEventListener('click',e=>{const d=e.target.closest('[data-del]');if(!d)return;const id=d.closest('tr').dataset.id;confirm2(d,'¿Borrar?',()=>act('admin_item_delete',{p_id:id}))});
+ bindScan();$('scanFile').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];e.target.value='';startScan(f)});
  $('iAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_item_save',{p_id:null,p_name:$('i-name').value,p_cat:$('i-cat').value,p_q:num($('i-q').value),p_p:num($('i-p').value),p_who:'',p_done:false,p_opt:false,p_spent:null})});
 }
 function paneDatos(){const ev=A.event,fixed=ev.people_override!=null;
