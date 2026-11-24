@@ -35,6 +35,15 @@ alter table public.settings add column if not exists admin_contact text not null
 alter table public.settings add column if not exists capacity int;            -- aforo (solo cuentan los "sí"); null = sin límite
 alter table public.settings add column if not exists signup_deadline date;    -- último día para apuntarse (incluido)
 alter table public.settings add column if not exists pay_deadline date;       -- último día para pagar
+alter table public.settings add column if not exists faq jsonb not null default '[]';  -- preguntas frecuentes [{q,a}]
+update public.settings set faq = '[
+ {"q":"¿Qué tengo que traer?","a":"Solo tu bebida. El local, el hielo, los vasos, las chuches y la música los pagamos entre todos."},
+ {"q":"¿Puedo llevar a alguien?","a":"Sí. Apúntale desde tu entrada, en «Vengo con alguien». Tendrá su propia entrada y pagará su parte."},
+ {"q":"¿Cuánto tengo que pagar y a quién?","a":"Lo ves en tu entrada: el importe y a quién hacer el Bizum. Puede bajar un poco si se apunta más gente."},
+ {"q":"¿Y si al final no puedo ir?","a":"Entra en tu entrada y marca «No voy» cuanto antes para dejar sitio. Si ya habías pagado, habla con tu recaudador."},
+ {"q":"¿Puedo pagar en efectivo?","a":"Sí, aunque mejor por Bizum: es más fácil llevar las cuentas. Si pagas en efectivo, dáselo en mano a tu recaudador antes de la fiesta."},
+ {"q":"He olvidado mi PIN","a":"Pide tu enlace a un gestor. Desde tu entrada puedes crear un PIN nuevo."}
+]'::jsonb where id = 1 and faq = '[]'::jsonb;
 -- Grupo de WhatsApp de la fiesta (solo si aún no se ha puesto otro desde la gestión)
 update public.settings set whatsapp_url = 'https://chat.whatsapp.com/GUb7L7ib0mGElP6Ic2JWpd' where id = 1 and whatsapp_url = '';
 
@@ -192,7 +201,7 @@ returns json language sql stable security definer set search_path = public as $$
     'notes',notes,'people_override',people_override,'has_pin',admin_pin_hash is not null,
     'admin_contact',admin_contact,'capacity',capacity,
     'signup_deadline',signup_deadline,'pay_deadline',pay_deadline,'signups_open',public._signups_open(),
-    'collectors',(select count(*) from collectors where active))
+    'collectors',(select count(*) from collectors where active),'faq',faq)
   from settings where id = 1;
 $$;
 
@@ -614,7 +623,12 @@ begin
     people_override = case when p ? 'people_override' then nullif(p->>'people_override','')::int else people_override end,
     capacity        = case when p ? 'capacity' then nullif(p->>'capacity','')::int else capacity end,
     signup_deadline = case when p ? 'signup_deadline' then nullif(p->>'signup_deadline','')::date else signup_deadline end,
-    pay_deadline    = case when p ? 'pay_deadline' then nullif(p->>'pay_deadline','')::date else pay_deadline end
+    pay_deadline    = case when p ? 'pay_deadline' then nullif(p->>'pay_deadline','')::date else pay_deadline end,
+    faq = case when jsonb_typeof(p->'faq') = 'array' then coalesce((
+            select jsonb_agg(jsonb_build_object('q', left(trim(x.it->>'q'),140), 'a', left(trim(coalesce(x.it->>'a','')),600)) order by x.n)
+            from jsonb_array_elements(p->'faq') with ordinality x(it, n)
+            where coalesce(trim(x.it->>'q'),'') <> '' and x.n <= 20), '[]'::jsonb)
+          else faq end
   where id = 1;
   perform public._assign_missing();
   return json_build_object('ok', true);

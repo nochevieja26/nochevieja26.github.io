@@ -6,6 +6,19 @@
 <title>Nochevieja 2026</title>
 <meta name="description" content="Apúntate a la fiesta de Nochevieja 2026">
 <meta name="theme-color" content="#1d0618">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Nochevieja 2026">
+<meta property="og:title" content="Nochevieja 2026 · Apúntate">
+<meta property="og:description" content="El 31 de diciembre, fin de año con los amigos. Apúntate en un minuto y mira lo que te toca poner.">
+<meta property="og:url" content="https://pacovidalgames-pixel.github.io/nochevieja-2026/">
+<meta property="og:image" content="https://pacovidalgames-pixel.github.io/nochevieja-2026/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Nochevieja 2026: cielo nocturno con fuegos artificiales y el botón Apúntate aquí">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://pacovidalgames-pixel.github.io/nochevieja-2026/og.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23e5242f'/%3E%3Cg stroke='%23ffd24d' stroke-width='5' stroke-linecap='round'%3E%3Cpath d='M32 12v10M32 42v10M12 32h10M42 32h10M18 18l7 7M39 39l7 7M46 18l-7 7M25 39l-7 7'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700;800&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -162,6 +175,15 @@ main{padding:0 0 60px}
 .due{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
 .due .big{font-size:clamp(44px,12vw,74px);line-height:1;font-weight:800;letter-spacing:-.04em;color:#fff}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.faq details{border-bottom:2px dotted var(--line)}
+.faq details:last-child{border-bottom:0}
+.faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;font-weight:700;font-size:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font:700 22px Unbounded,sans-serif;color:var(--gold);flex:none;transition:transform .15s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details p{margin:0 0 14px;color:var(--mute)}
+.faqrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:12px 0;border-bottom:2px dotted var(--line)}
+.faqrow textarea{min-height:64px}
 .banner{background:var(--gold);color:var(--night);padding:10px 16px;font-weight:700;text-align:center}
 footer{padding:28px 0 40px;color:var(--mute);font-size:14px}
 footer a{color:var(--mute)}
@@ -413,6 +435,9 @@ async function viewHome(){nav('home');const v=layout('ticket');
    </section>
    <section class="card block" aria-labelledby="h-s"><h2 id="h-s">En qué se va el dinero</h2>
     <p class="sub">Local, hielo, vasos y música los pagamos entre todos. Tú solo traes tu bebida. Al apuntarte te toca por sorteo a quién hacerle el Bizum.</p>${shoppingHtml(d.items,m)}</section>
+   ${(ev.faq||[]).length?`<section class="card block faq" aria-labelledby="h-f"><h2 id="h-f">Preguntas frecuentes</h2>
+    ${ev.faq.map(f=>`<details><summary>${esc(f.q)}</summary>${f.a?`<p>${esc(f.a)}</p>`:''}</details>`).join('')}
+    ${ev.admin_contact?`<p class="sub" style="margin:10px 0 0">¿Otra duda? Pregunta a ${esc(ev.admin_contact)} o en el grupo.</p>`:''}</section>`:''}
   </div>`;
  if(location.hash==='#apuntarme'||location.hash==='#entrar')setTimeout(()=>$('apuntarme')?.scrollIntoView({behavior:'smooth'}),50);
 }
@@ -647,12 +672,19 @@ function paneDatos(){const ev=A.event,fixed=ev.people_override!=null;
     <label class="row"><input type="radio" name="div" value="conf"${fixed?'':' checked'}> Entre los confirmados (${A.money.si})</label>
     <label class="row" style="margin-top:8px"><input type="radio" name="div" value="fixed"${fixed?' checked':''}> Entre un número fijo: <input type="number" id="e-people" min="1" max="500" value="${esc(ev.people_override??35)}" style="width:96px" aria-label="Número de personas"></label></fieldset>
    <button class="btn" type="submit">Guardar datos</button></form></section>
-  <section class="card"><h2>PIN de gestores</h2><p class="sub">Cambia el PIN si alguien que no debería lo conoce. Los demás gestores tendrán que usar el nuevo.</p>
+  <div><section class="card"><h2>Preguntas frecuentes</h2><p class="sub">Salen al final de la página de inicio. Añade lo que os pregunte la gente: guardarropa, hora de cierre de la puerta, cómo llegar…</p>
+   <div id="faqList">${(ev.faq||[]).map(f=>`<div class="faqrow"><div class="stack-form" style="gap:6px"><input type="text" data-q maxlength="140" value="${esc(f.q)}" aria-label="Pregunta" placeholder="Pregunta"><textarea data-a maxlength="600" aria-label="Respuesta" placeholder="Respuesta">${esc(f.a)}</textarea></div><button class="ghost" type="button" data-fdel aria-label="Quitar pregunta">Quitar</button></div>`).join('')}</div>
+   <div class="row" style="margin-top:12px"><button class="btn2 sm" type="button" id="faqAdd">Añadir pregunta</button><button class="btn sm" type="button" id="faqSave">Guardar preguntas</button></div></section>
+  <section class="card" style="margin-top:18px"><h2>PIN de gestores</h2><p class="sub">Cambia el PIN si alguien que no debería lo conoce. Los demás gestores tendrán que usar el nuevo.</p>
    <form class="stack-form" id="pForm"><label class="f">PIN nuevo<input type="password" id="p-new" minlength="6" required autocomplete="new-password"></label>
-   <label class="f">Repítelo<input type="password" id="p-new2" minlength="6" required autocomplete="new-password"></label><button class="btn2" type="submit">Cambiar PIN</button><p class="msg" id="pMsg"></p></form></section></div>`;
+   <label class="f">Repítelo<input type="password" id="p-new2" minlength="6" required autocomplete="new-password"></label><button class="btn2" type="submit">Cambiar PIN</button><p class="msg" id="pMsg"></p></form></section></div></div>`;
  $('sForm').addEventListener('submit',e=>{e.preventDefault();const f=document.querySelector('input[name=div]:checked').value==='fixed',cap=$('e-cap').value.trim();
   act('admin_settings_save',{p:{event_name:$('e-name').value,start_time:$('e-start').value,end_time:$('e-end').value,place:$('e-place').value,addr:$('e-addr').value,pay_how:$('e-payhow').value,notes:$('e-notes').value,admin_contact:$('e-contact').value,whatsapp_url:$('e-wa').value,
    signup_deadline:$('e-sdl').value,pay_deadline:$('e-pdl').value,capacity:cap?String(Math.max(1,Math.round(num(cap)))):'',people_override:f?String(Math.max(1,Math.round(num($('e-people').value))||1)):''}})});
+ const fl=$('faqList');
+ $('faqAdd').addEventListener('click',()=>{fl.insertAdjacentHTML('beforeend',`<div class="faqrow"><div class="stack-form" style="gap:6px"><input type="text" data-q maxlength="140" aria-label="Pregunta" placeholder="Pregunta"><textarea data-a maxlength="600" aria-label="Respuesta" placeholder="Respuesta"></textarea></div><button class="ghost" type="button" data-fdel aria-label="Quitar pregunta">Quitar</button></div>`);fl.lastElementChild.querySelector('input').focus()});
+ fl.addEventListener('click',e=>{const b=e.target.closest('[data-fdel]');if(b)b.closest('.faqrow').remove()});
+ $('faqSave').addEventListener('click',()=>act('admin_settings_save',{p:{faq:[...fl.querySelectorAll('.faqrow')].map(r=>({q:r.querySelector('[data-q]').value,a:r.querySelector('[data-a]').value})).filter(f=>f.q.trim())}}));
  $('pForm').addEventListener('submit',async e=>{e.preventDefault();const n=$('p-new').value,msg=$('pMsg');
   if(n!==$('p-new2').value){msg.className='msg err';msg.textContent='Los PIN no coinciden';return}
   try{await rpc('admin_change_pin',{p_pin:pin(),p_new:n});sess.set('nv_pin',n);msg.className='msg ok';msg.textContent='PIN cambiado.';e.target.reset()}catch(err){msg.className='msg err';msg.textContent=err.message}});
