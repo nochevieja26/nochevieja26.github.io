@@ -214,6 +214,14 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
 .col .meter i{display:block;height:100%;background:var(--grape)}
 .col .nums{font-size:14px;color:var(--mute)}
 .col-list li{align-items:center}
+.acts{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;white-space:nowrap}
+.chipbtn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:99px;border:0;background:var(--card2);color:var(--ink);font-size:13px;font-weight:700;text-decoration:none;cursor:pointer}
+.chipbtn:hover{background:#ffffff26}
+.chipbtn.wa{background:#1fa855;color:#fff}
+.chipbtn.wa:hover{background:#25c062}
+.tag{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:700;background:var(--card2);color:var(--mute)}
+.tag.gold{background:var(--gold-bg);color:#ffd96a}
+.tag.red{background:var(--red-bg);color:#ff8a92}
 @media(max-width:700px){
  .stack thead{display:none}
  .stack tr{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:6px 8px;padding:14px 0;border-bottom:2px solid var(--line)}
@@ -223,6 +231,7 @@ td input[type=text],td input[type=tel],td input[type=number],td select{min-heigh
  .stack td.del{grid-column:2;grid-row:1}
  .stack td input,.stack td select{max-width:65%}
  .stack td.first{display:block}.stack td.first input{max-width:none}
+ .acts{flex-wrap:wrap;justify-content:flex-end}
 }
 @media(max-width:560px){
  .brand{display:none}
@@ -628,6 +637,8 @@ function summary(){const m=A.money,ev=A.event;
 async function act(fn,args){const msg=$('aMsg');msg.className='msg';msg.textContent='Guardando…';
  try{await rpc(fn,{p_pin:pin(),...args});A=await rpc('admin_state',{p_pin:pin()});paintInfo(A.event,A.money);renderAdmin();$('aMsg').className='msg ok';$('aMsg').textContent='Guardado.'}
  catch(err){msg.className='msg err';msg.textContent=err.message}}
+const ICON_WA='<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 2a8 8 0 1 1-4.1 14.9l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 0 1 12 4Zm-3.2 3.8c-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.7s1.2 3.2 1.3 3.4c.2.2 2.3 3.6 5.6 4.9 2.8 1.1 3.3.9 3.9.8.6-.1 2-.8 2.2-1.6.3-.8.3-1.5.2-1.6-.1-.1-.3-.2-.6-.4l-2-1c-.3-.1-.5-.1-.7.1l-.9 1.2c-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.4.1-.6l.5-.6.3-.5c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.6-.7-.6h-.6Z"/></svg>';
+const ICON_LINK='<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>';
 const STATUS_ADMIN={si:'Sí',quiza:'Quizá',espera:'En espera',no:'No'};
 function adminRemind(g){const c=A.collectors.find(x=>x.id===g.collector_id),ev=A.event,m=A.money;
  return `Hola ${g.name}! Te falta pagar ${eur(m.per_person)} de la Nochevieja${ev.pay_deadline?` (antes del ${fdate(ev.pay_deadline)})`:''}. ${c?(g.pay_method==='efectivo'?`Dáselo en mano a ${c.name}.`:`Haz el Bizum a ${c.name} (${c.phone}) con el concepto «${concept(g.name)}».`):''} Tu ficha: ${personalLink(g.token)}`}
@@ -643,9 +654,10 @@ function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone).to
    <td data-l="Paga a"><select data-f="collector" aria-label="Recaudador"><option value="">— Sin asignar —</option>${A.collectors.map(c=>`<option value="${esc(c.id)}"${g.collector_id===c.id?' selected':''}>${esc(c.name)}${c.active?'':' (inactivo)'}</option>`).join('')}</select></td>
    <td data-l="Cómo"><select data-f="pay" aria-label="Forma de pago">${Object.entries(PAY).map(([k,l])=>`<option value="${k}"${g.pay_method===k?' selected':''}>${l}</option>`).join('')}</select></td>
    <td data-l="Pagado"><label class="tick"><input type="checkbox" data-f="paid"${g.paid?' checked':''} aria-label="Ha pagado"></label></td>
-   <td data-l="Avisos"><span class="row" style="gap:6px">${g.claimed&&!g.paid?'<span class="pill quiza">dice que pagó</span>':''}
-    ${g.status==='si'&&!g.paid&&g.phone?`<a class="btn2 sm" href="${esc(waLink(g.phone,adminRemind(g)))}" target="_blank" rel="noopener">Recordar</a>`:''}
-    <button class="btn2 sm" type="button" data-link="${esc(g.token)}">Enlace</button>${g.locked?' <small class="warn" style="display:inline">bloqueado</small>':g.has_pin?'':' <small class="sub" style="font-size:13px">sin PIN</small>'}</span></td>
+   <td data-l="Avisos"><span class="acts">${g.claimed&&!g.paid?'<span class="tag gold" title="Ha avisado de que ya pagó">Dice que pagó</span>':''}
+    ${g.status==='si'&&!g.paid&&g.phone?`<a class="chipbtn wa" href="${esc(waLink(g.phone,adminRemind(g)))}" target="_blank" rel="noopener" title="Abrir WhatsApp con el recordatorio de pago">${ICON_WA}Recordar</a>`:''}
+    <button class="chipbtn" type="button" data-link="${esc(g.token)}" title="Copiar el enlace a su entrada">${ICON_LINK}<span>Enlace</span></button>
+    ${g.locked?'<span class="tag red" title="Demasiados intentos de PIN">Bloqueado</span>':g.has_pin?'':'<span class="tag" title="Todavía no ha creado su PIN">Sin PIN</span>'}</span></td>
    <td class="del"><button class="ghost" type="button" data-del aria-label="Borrar a ${esc(g.name)}">✕</button></td></tr>`).join('')||'<tr><td colspan="8" class="msg">Nadie todavía. Pasa la invitación o apunta a alguien abajo.</td></tr>'}
   </tbody></table></div>
   <form class="add three" id="gAdd" autocomplete="off"><input type="text" id="g-name" placeholder="Nombre" required maxlength="60" aria-label="Nombre"><input type="tel" id="g-phone" placeholder="Teléfono (opcional)" maxlength="30" aria-label="Teléfono"><button class="btn" type="submit">Añadir</button></form></section>`;
@@ -653,7 +665,7 @@ function paneGente(){const G=A.guests.filter(g=>!filter||(g.name+' '+g.phone).to
  const tb=$('pane').querySelector('tbody');
  tb.addEventListener('change',e=>{const tr=e.target.closest('tr[data-id]');if(!tr)return;const val=f=>tr.querySelector(`[data-f="${f}"]`);
   act('admin_guest_save',{p_id:tr.dataset.id,p_name:val('name').value,p_phone:val('phone').value,p_status:val('status').value,p_brings:null,p_paid:val('paid').checked,p_pay:val('pay').value,p_collector:val('collector').value||null})});
- tb.addEventListener('click',e=>{const l=e.target.closest('[data-link]');if(l){copy(personalLink(l.dataset.link),l);return}
+ tb.addEventListener('click',e=>{const l=e.target.closest('[data-link]');if(l){copy(personalLink(l.dataset.link),l.querySelector('span')||l);return}
   const d=e.target.closest('[data-del]');if(d){const id=d.closest('tr').dataset.id;confirm2(d,'¿Borrar?',()=>act('admin_guest_delete',{p_id:id}))}});
  $('gAdd').addEventListener('submit',e=>{e.preventDefault();act('admin_guest_save',{p_id:null,p_name:$('g-name').value,p_phone:$('g-phone').value,p_status:'si',p_brings:'',p_paid:false,p_pay:'bizum',p_collector:null})});
 }
