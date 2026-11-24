@@ -83,6 +83,10 @@ button:disabled{opacity:.55;cursor:default}
 .ghost:hover{color:var(--gold)}
 input[type=text],input[type=tel],input[type=number],input[type=password],input[type=time],input[type=search],input[type=url],input[type=date],select,textarea{width:100%;min-height:52px;padding:12px 14px;border:2px solid var(--line);border-radius:14px;background:var(--card2);color:var(--ink)}
 textarea{min-height:86px;resize:vertical}
+/* Safari en iPhone da a fecha y hora un ancho mínimo propio que se sale de la caja */
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;width:100%;line-height:1.3}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;min-height:1.3em}
+input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.7}
 input::placeholder,textarea::placeholder{color:#9a7489}
 input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none}
 :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
