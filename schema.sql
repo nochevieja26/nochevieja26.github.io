@@ -626,6 +626,18 @@ begin
   return json_build_object('ok', true);
 end $$;
 
+-- Borrar varias cosas de la compra de una vez
+drop function if exists public.admin_items_delete(text,uuid[]);
+create or replace function public.admin_items_delete(p_pin text, p_ids jsonb)
+returns json language plpgsql volatile security definer set search_path = public as $$
+declare e text := public._pin_error(p_pin); n int;
+begin
+  if e is not null then return json_build_object('error', e); end if;
+  delete from items where id::text in (select jsonb_array_elements_text(case when jsonb_typeof(p_ids) = 'array' then p_ids else '[]'::jsonb end));
+  get diagnostics n = row_count;
+  return json_build_object('ok', true, 'deleted', n);
+end $$;
+
 create or replace function public.admin_settings_save(p_pin text, p jsonb)
 returns json language plpgsql volatile security definer set search_path = public as $$
 declare e text := public._pin_error(p_pin);
@@ -671,6 +683,6 @@ grant execute on function
   public.admin_guest_save(text,uuid,text,text,text,text,boolean,text,uuid,uuid), public.admin_guest_delete(text,uuid),
   public.admin_collector_save(text,uuid,text,text,boolean), public.admin_collector_delete(text,uuid),
   public.admin_collectors_reshuffle(text),
-  public.admin_item_save(text,uuid,text,text,numeric,numeric,text,boolean,boolean,numeric), public.admin_item_delete(text,uuid),
+  public.admin_item_save(text,uuid,text,text,numeric,numeric,text,boolean,boolean,numeric), public.admin_item_delete(text,uuid), public.admin_items_delete(text,jsonb),
   public.admin_settings_save(text,jsonb)
 to anon, authenticated;
